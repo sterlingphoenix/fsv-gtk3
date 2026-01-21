@@ -3,7 +3,6 @@
 [![travis ci](https://travis-ci.org/mcuelenaere/fsv.svg?branch=master)](https://travis-ci.org/mcuelenaere/fsv)
 
 
-
 This repo is a fork of a fork of [fsv](http://fsv.sourceforge.net/), with some patches on top to align it more to the current state of affairs.
 The original author is [Daniel Richard G.](http://fox.mit.edu/skunk/), a former student of Computer Science at the MIT.
 
