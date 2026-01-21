@@ -53,23 +53,13 @@ static Icon node_type_mini_icons[NUM_NODE_TYPES];
 static void
 filelist_icons_init( void )
 {
-	GtkStyle *style;
-	GdkColor *trans_color;
-	GdkWindow *window;
-	GdkPixmap *pixmap;
-	GdkBitmap *mask;
+	GdkPixbuf *pixbuf;
 	int i;
-
-	style = gtk_widget_get_style( file_clist_w );
-	trans_color = &style->bg[GTK_STATE_NORMAL];
-	gtk_widget_realize( file_clist_w );
-	window = file_clist_w->window;
 
 	/* Make mini node type icons */
 	for (i = 1; i < NUM_NODE_TYPES; i++) {
-		pixmap = gdk_pixmap_create_from_xpm_d( window, &mask, trans_color, node_type_mini_xpms[i] );
-		node_type_mini_icons[i].pixmap = pixmap;
-		node_type_mini_icons[i].mask = mask;
+		pixbuf = gdk_pixbuf_new_from_xpm_data((const gchar **)node_type_mini_xpms[i]);
+		node_type_mini_icons[i].pixmap = pixbuf;
 	}
 }
 
@@ -88,6 +78,8 @@ filelist_pass_widget( GtkWidget *clist_w )
 void
 filelist_reset_access( void )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
 	boolean enabled;
 
         enabled = dirtree_entry_expanded( filelist_current_dnode );
@@ -100,6 +92,8 @@ filelist_reset_access( void )
 		gtk_clist_unselect_all( GTK_CLIST(file_clist_w) );
 		gui_cursor( file_clist_w, GDK_X_CURSOR );
 	}
+
+#endif
 }
 
 
@@ -115,6 +109,8 @@ compare_node( GNode *a, GNode *b )
 void
 filelist_populate( GNode *dnode )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
 	GNode *node;
 	GList *node_list = NULL, *node_llink;
 	Icon *icon;
@@ -169,6 +165,8 @@ filelist_populate( GNode *dnode )
 
 	filelist_current_dnode = dnode;
 	filelist_reset_access( );
+
+#endif
 }
 
 
@@ -177,6 +175,8 @@ filelist_populate( GNode *dnode )
 void
 filelist_show_entry( GNode *node )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
 	GNode *dnode;
 	int row;
 
@@ -184,7 +184,7 @@ filelist_show_entry( GNode *node )
 	if (NODE_IS_DIR(node))
 		dnode = node;
 	else
-		dnode = node->parent;
+		dnode = gtk_widget_get_parent(node);
 
 	if (dnode != filelist_current_dnode) {
 		/* Scroll directory tree to proper entry */
@@ -198,6 +198,8 @@ filelist_show_entry( GNode *node )
 	else
 		gtk_clist_unselect_all( GTK_CLIST(file_clist_w) );
 	gui_clist_moveto_row( file_clist_w, MAX(0, row), FILELIST_SCROLL_TIME );
+
+#endif
 }
 
 
@@ -205,6 +207,8 @@ filelist_show_entry( GNode *node )
 static int
 filelist_select_cb( GtkWidget *clist_w, GdkEventButton *ev_button )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
 	GNode *node;
 	int row;
 
@@ -247,6 +251,8 @@ filelist_select_cb( GtkWidget *clist_w, GdkEventButton *ev_button )
 	}
 
 	return FALSE;
+
+#endif
 }
 
 
@@ -254,19 +260,23 @@ filelist_select_cb( GtkWidget *clist_w, GdkEventButton *ev_button )
 void
 filelist_init( void )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
 	GtkWidget *parent_w;
 
 	/* Replace current clist widget with a single-column one */
-	parent_w = file_clist_w->parent->parent;
-	gtk_widget_destroy( file_clist_w->parent );
+	parent_w = gtk_widget_get_parent(file_clist_w)->parent;
+	gtk_widget_destroy( gtk_widget_get_parent(file_clist_w) );
 	file_clist_w = gui_clist_add( parent_w, 1, NULL );
-	gtk_signal_connect( GTK_OBJECT(file_clist_w), "button_press_event", GTK_SIGNAL_FUNC(filelist_select_cb), NULL );
+	g_signal_connect( G_OBJECT(file_clist_w), "button_press_event", G_CALLBACK(filelist_select_cb), NULL );
 
 	filelist_populate( root_dnode );
 
 	/* Do this so that directory tree gets scrolled to the to at
 	 * end of initial camera pan (right after filesystem scan) */
 	filelist_current_dnode = NULL;
+
+#endif
 }
 
 
@@ -275,6 +285,8 @@ filelist_init( void )
 void
 filelist_scan_monitor_init( void )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
 	char *col_titles[3];
 	char *empty_row[3] = { NULL, NULL, NULL };
 	GtkWidget *parent_w;
@@ -286,8 +298,8 @@ filelist_scan_monitor_init( void )
 	col_titles[2] = _("Bytes");
 
 	/* Replace current clist widget with a 3-column one */
-	parent_w = file_clist_w->parent->parent;
-	gtk_widget_destroy( file_clist_w->parent );
+	parent_w = gtk_widget_get_parent(file_clist_w)->parent;
+	gtk_widget_destroy( gtk_widget_get_parent(file_clist_w) );
 	file_clist_w = gui_clist_add( parent_w, 3, col_titles );
 
 	/* Place icons and static text */
@@ -301,6 +313,8 @@ filelist_scan_monitor_init( void )
                         gtk_clist_set_text( GTK_CLIST(file_clist_w), i - 1, 0, _("TOTAL") );
 		gtk_clist_set_selectable( GTK_CLIST(file_clist_w), i - 1, FALSE );
 	}
+
+#endif
 }
 
 
@@ -308,6 +322,8 @@ filelist_scan_monitor_init( void )
 void
 filelist_scan_monitor( int *node_counts, int64 *size_counts )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
 	const char *str;
 	int64 size_total = 0;
 	int node_total = 0;
@@ -334,6 +350,8 @@ filelist_scan_monitor( int *node_counts, int64 *size_counts )
 		gtk_clist_set_text( GTK_CLIST(file_clist_w), i - 1, 2, str );
 	}
 	gtk_clist_thaw( GTK_CLIST(file_clist_w) );
+
+#endif
 }
 
 
@@ -342,6 +360,8 @@ filelist_scan_monitor( int *node_counts, int64 *size_counts )
 GtkWidget *
 dir_contents_list( GNode *dnode )
 {
+#if 0 // TODO GTK3: GtkCList is removed. Body needs manual migration.
+
         char *col_titles[2];
 	char *clist_row[2];
 	GtkWidget *clist_w;
@@ -369,6 +389,8 @@ dir_contents_list( GNode *dnode )
 	}
 
 	return clist_w;
+
+#endif
 }
 
 

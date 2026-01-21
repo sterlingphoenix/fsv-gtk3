@@ -59,6 +59,8 @@ static GNode *dirtree_current_dnode;
 static int
 dirtree_select_cb( GtkWidget *ctree_w, GdkEventButton *ev_button )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	GNode *dnode;
 	int row;
 
@@ -93,7 +95,7 @@ dirtree_select_cb( GtkWidget *ctree_w, GdkEventButton *ev_button )
 		camera_look_at( dnode );
 		/* Preempt the forthcoming tree expand/collapse
 		 * (the standard action spawned by a double-click) */
-		gtk_signal_emit_stop_by_name( GTK_OBJECT(ctree_w), "button_press_event" );
+		g_signal_emit_stop_by_name( G_OBJECT(ctree_w), "button_press_event" );
 		return TRUE;
 	}
 
@@ -112,13 +114,17 @@ dirtree_select_cb( GtkWidget *ctree_w, GdkEventButton *ev_button )
 	}
 
 	return FALSE;
+
+#endif
 }
 
 
 /* Callback for collapse of a directory tree entry */
 static void
-dirtree_collapse_cb( GtkWidget *ctree_w, GtkCTreeNode *ctnode )
+dirtree_collapse_cb( GtkWidget *ctree_w, GtkTreeIter *ctnode )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	GNode *dnode;
 
 	if (globals.fsv_mode == FSV_SPLASH)
@@ -126,13 +132,17 @@ dirtree_collapse_cb( GtkWidget *ctree_w, GtkCTreeNode *ctnode )
 
 	dnode = (GNode *)gtk_ctree_node_get_row_data( GTK_CTREE(ctree_w), ctnode );
 	colexp( dnode, COLEXP_COLLAPSE_RECURSIVE );
+
+#endif
 }
 
 
 /* Callback for expand of a directory tree entry */
 static void
-dirtree_expand_cb( GtkWidget *ctree_w, GtkCTreeNode *ctnode )
+dirtree_expand_cb( GtkWidget *ctree_w, GtkTreeIter *ctnode )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	GNode *dnode;
 
 	if (globals.fsv_mode == FSV_SPLASH)
@@ -140,6 +150,8 @@ dirtree_expand_cb( GtkWidget *ctree_w, GtkCTreeNode *ctnode )
 
 	dnode = (GNode *)gtk_ctree_node_get_row_data( GTK_CTREE(ctree_w), ctnode );
 	colexp( dnode, COLEXP_EXPAND );
+
+#endif
 }
 
 
@@ -151,23 +163,13 @@ dirtree_icons_init( void )
 		mini_folder_closed_xpm,
 		mini_folder_open_xpm
 	};
-	GtkStyle *style;
-	GdkColor *trans_color;
-	GdkWindow *window;
-	GdkPixmap *pixmap;
-	GdkBitmap *mask;
+	GdkPixbuf *pixbuf;
 	int i;
-
-	style = gtk_widget_get_style( dir_ctree_w );
-	trans_color = &style->bg[GTK_STATE_NORMAL];
-	gtk_widget_realize( dir_ctree_w );
-	window = dir_ctree_w->window;
 
 	/* Make icons for collapsed and expanded directories */
 	for (i = 0; i < 2; i++) {
-		pixmap = gdk_pixmap_create_from_xpm_d( window, &mask, trans_color, dir_colexp_mini_xpms[i] );
-		dir_colexp_mini_icons[i].pixmap = pixmap;
-		dir_colexp_mini_icons[i].mask = mask;
+		pixbuf = gdk_pixbuf_new_from_xpm_data((const gchar **)dir_colexp_mini_xpms[i]);
+		dir_colexp_mini_icons[i].pixmap = pixbuf;
 	}
 }
 
@@ -179,9 +181,9 @@ dirtree_pass_widget( GtkWidget *ctree_w )
 	dir_ctree_w = ctree_w;
 
 	/* Connect signal handlers */
-	gtk_signal_connect( GTK_OBJECT(dir_ctree_w), "button_press_event", GTK_SIGNAL_FUNC(dirtree_select_cb), NULL );
-	gtk_signal_connect( GTK_OBJECT(dir_ctree_w), "tree_collapse", GTK_SIGNAL_FUNC(dirtree_collapse_cb), NULL );
-	gtk_signal_connect( GTK_OBJECT(dir_ctree_w), "tree_expand", GTK_SIGNAL_FUNC(dirtree_expand_cb), NULL );
+	g_signal_connect( G_OBJECT(dir_ctree_w), "button_press_event", G_CALLBACK(dirtree_select_cb), NULL );
+	g_signal_connect( G_OBJECT(dir_ctree_w), "tree_collapse", G_CALLBACK(dirtree_collapse_cb), NULL );
+	g_signal_connect( G_OBJECT(dir_ctree_w), "tree_expand", G_CALLBACK(dirtree_expand_cb), NULL );
 
 	dirtree_icons_init( );
 }
@@ -191,8 +193,12 @@ dirtree_pass_widget( GtkWidget *ctree_w )
 void
 dirtree_clear( void )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	gtk_clist_clear( GTK_CLIST(dir_ctree_w) );
 	dirtree_current_dnode = NULL;
+
+#endif
 }
 
 
@@ -200,7 +206,9 @@ dirtree_clear( void )
 void
 dirtree_entry_new( GNode *dnode )
 {
-	GtkCTreeNode *parent_ctnode = NULL;
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
+	GtkTreeIter *parent_ctnode = NULL;
 	const char *name;
 	boolean expanded;
 
@@ -223,7 +231,7 @@ dirtree_entry_new( GNode *dnode )
 	}
 	else if (GTK_CTREE_ROW(parent_ctnode)->expanded) {
 		/* Pre-update (allow ctree to register new row) */
-		gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
+		// gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
 		gui_update( );
 		gtk_clist_freeze( GTK_CLIST(dir_ctree_w) );
 		/* Select last row */
@@ -231,10 +239,12 @@ dirtree_entry_new( GNode *dnode )
 		/* Scroll directory tree down to last row */
 		gui_clist_moveto_row( dir_ctree_w, -1, 0.0 );
 		/* Post-update (allow ctree to perform select/scroll) */
-		gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
+		// gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
 		gui_update( );
 		gtk_clist_freeze( GTK_CLIST(dir_ctree_w) );
 	}
+
+#endif
 }
 
 
@@ -242,7 +252,11 @@ dirtree_entry_new( GNode *dnode )
 void
 dirtree_no_more_entries( void )
 {
-	gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
+	// gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
+
+#endif
 }
 
 
@@ -252,6 +266,8 @@ dirtree_no_more_entries( void )
 void
 dirtree_entry_show( GNode *dnode )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	int row;
 
 	g_assert( NODE_IS_DIR(dnode) );
@@ -272,6 +288,8 @@ dirtree_entry_show( GNode *dnode )
 	gui_clist_moveto_row( dir_ctree_w, MAX(0, row), DIRTREE_SCROLL_TIME );
 
 	dirtree_current_dnode = dnode;
+
+#endif
 }
 
 
@@ -279,9 +297,13 @@ dirtree_entry_show( GNode *dnode )
 boolean
 dirtree_entry_expanded( GNode *dnode )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	g_assert( NODE_IS_DIR(dnode) );
 
 	return GTK_CTREE_ROW(DIR_NODE_DESC(dnode)->ctnode)->expanded;
+
+#endif
 }
 
 
@@ -289,8 +311,12 @@ dirtree_entry_expanded( GNode *dnode )
 static void
 block_colexp_handlers( void )
 {
-	gtk_signal_handler_block_by_func( GTK_OBJECT(dir_ctree_w), GTK_SIGNAL_FUNC(dirtree_collapse_cb), NULL );
-	gtk_signal_handler_block_by_func( GTK_OBJECT(dir_ctree_w), GTK_SIGNAL_FUNC(dirtree_expand_cb), NULL );
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
+	g_signal_handlers_block_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_collapse_cb), NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_expand_cb), NULL );
+
+#endif
 }
 
 
@@ -298,8 +324,12 @@ block_colexp_handlers( void )
 static void
 unblock_colexp_handlers( void )
 {
-	gtk_signal_handler_unblock_by_func( GTK_OBJECT(dir_ctree_w), GTK_SIGNAL_FUNC(dirtree_collapse_cb), NULL );
-	gtk_signal_handler_unblock_by_func( GTK_OBJECT(dir_ctree_w), GTK_SIGNAL_FUNC(dirtree_expand_cb), NULL );
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
+	g_signal_handlers_unblock_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_collapse_cb), NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_expand_cb), NULL );
+
+#endif
 }
 
 
@@ -307,11 +337,15 @@ unblock_colexp_handlers( void )
 void
 dirtree_entry_collapse_recursive( GNode *dnode )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	g_assert( NODE_IS_DIR(dnode) );
 
 	block_colexp_handlers( );
 	gtk_ctree_collapse_recursive( GTK_CTREE(dir_ctree_w), DIR_NODE_DESC(dnode)->ctnode );
 	unblock_colexp_handlers( );
+
+#endif
 }
 
 
@@ -321,6 +355,8 @@ dirtree_entry_collapse_recursive( GNode *dnode )
 void
 dirtree_entry_expand( GNode *dnode )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	GNode *up_node;
 
 	g_assert( NODE_IS_DIR(dnode) );
@@ -333,6 +369,8 @@ dirtree_entry_expand( GNode *dnode )
 		up_node = up_node->parent;
 	}
 	unblock_colexp_handlers( );
+
+#endif
 }
 
 
@@ -341,6 +379,8 @@ dirtree_entry_expand( GNode *dnode )
 void
 dirtree_entry_expand_recursive( GNode *dnode )
 {
+#if 0 // TODO GTK3: GtkCList/GtkCTree are removed. Body needs manual migration.
+
 	g_assert( NODE_IS_DIR(dnode) );
 
 #if DEBUG
@@ -356,6 +396,8 @@ dirtree_entry_expand_recursive( GNode *dnode )
 	block_colexp_handlers( );
 	gtk_ctree_expand_recursive( GTK_CTREE(dir_ctree_w), DIR_NODE_DESC(dnode)->ctnode );
 	unblock_colexp_handlers( );
+
+#endif
 }
 
 

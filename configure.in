@@ -85,8 +85,8 @@ fi
 AC_SUBST(docdir)
 
 # GTK+ libraries
-PKG_CHECK_MODULES([GTK], [gtk+-2.0])
-PKG_CHECK_MODULES([GLIB], [glib-2.0])
+PKG_CHECK_MODULES([GTK], [gtk+-3.0])
+
 
 #### OpenGL/Mesa3D libraries ####
 AC_ARG_WITH(GL-prefix,  [  --with-GL-prefix=PFX    Prefix where GL/MesaGL is installed (optional)])
@@ -136,9 +136,6 @@ fi
 AC_SUBST(GL_CFLAGS)
 AC_SUBST(GL_LIBS)
 #### end of OpenGL/Mesa3D configuration ####
-
-#### GtkGLArea library ####
-PKG_CHECK_MODULES([GTKGL], [gtkgl-2.0])
 
 # Check for 'file' command
 AC_PATH_PROG(FILE_CMD, file)

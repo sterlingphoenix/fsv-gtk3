@@ -12,7 +12,6 @@ INCLUDES = \
 	-I$(top_srcdir)/lib \
 	$(DEBUG_CFLAGS) \
 	@GTK_CFLAGS@ \
-	@GTKGL_CFLAGS@ \
 	@GL_CFLAGS@
 
 bin_PROGRAMS = fsv
@@ -60,7 +59,6 @@ fsv_SOURCES = \
 fsv_LDADD = \
 	$(DEBUG_LIBS) \
 	$(top_builddir)/lib/libmisc.a \
-	@GTKGL_LIBS@ \
 	@GL_LIBS@ \
 	@GTK_LIBS@
 

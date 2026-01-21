@@ -25,7 +25,7 @@
 #include "ogl.h"
 
 #include <gtk/gtk.h>
-#include <gtkgl/gtkglarea.h>
+
 #include <GL/gl.h>
 #include <GL/glu.h> /* gluPickMatrix( ) */
 
@@ -87,6 +87,34 @@ ogl_init( void )
 	text_init( );
 }
 
+/* --- NEW GTK3 HELPER FUNCTIONS --- */
+
+/* 1. The Wrapper: Makes your old void function compatible with GTK3's "draw" signal */
+//gboolean ogl_draw_wrapper(GtkWidget *widget, cairo_t *cr, gpointer data) {
+//    /* Note: In GTK3, drawing happens here. 
+//       If your ogl_draw() sets up the GL context, this should work. */
+//    ogl_draw(); 
+//    return TRUE; // Tell GTK "We handled the drawing, don't clear the screen"
+//}
+
+
+/* UPDATED: Uses GtkGLArea and GdkGLContext instead of cairo_t */
+gboolean ogl_draw_wrapper(GtkGLArea *area, GdkGLContext *context, gpointer data) {
+    /* Call the main OpenGL drawing routine */
+    ogl_draw(); 
+    /* returning TRUE tells GTK: "I am done drawing, please SWAP BUFFERS now." */
+    return TRUE; 
+}
+
+/* 2. The Bridge: Allows other files (like animation.c) to safely ask for a redraw */
+void ogl_request_redraw(void) {
+    if (viewport_gl_area_w != NULL) {
+        gtk_widget_queue_draw(viewport_gl_area_w);
+    }
+}
+
+
+
 
 /* Changes viewport size, after a window resize */
 void
@@ -94,8 +122,8 @@ ogl_resize( void )
 {
 	int width, height;
 
-	width = viewport_gl_area_w->allocation.width;
-	height = viewport_gl_area_w->allocation.height;
+	width = gtk_widget_get_allocated_width(viewport_gl_area_w);
+	height = gtk_widget_get_allocated_height(viewport_gl_area_w);
 	glViewport( 0, 0, width, height );
 }
 
@@ -179,8 +207,7 @@ setup_modelview_matrix( void )
 
 /* (Re)draws the viewport
  * NOTE: Don't call this directly! Use redraw( ) */
-void
-ogl_draw( void )
+void ogl_draw( void )
 {
 	static FsvMode prev_mode = FSV_NONE;
 	int err;
@@ -205,7 +232,7 @@ ogl_draw( void )
 			return;
 	}
 
-	gtk_gl_area_swapbuffers( GTK_GL_AREA(viewport_gl_area_w) );
+//	gtk_gl_area_swapbuffers( GTK_GL_AREA(viewport_gl_area_w) ); // TODO GTK3: Port to render signal
 }
 
 
@@ -213,8 +240,7 @@ ogl_draw( void )
  * occur under the given viewport coordinates (x,y) (where (0,0) indicates
  * the upper left corner). Return value is the number of names (hit records)
  * stored in the select buffer */
-int
-ogl_select( int x, int y, const GLuint **selectbuf_ptr )
+int ogl_select( int x, int y, const GLuint **selectbuf_ptr )
 {
 	static GLuint selectbuf[1024];
 	GLint viewport[4];
@@ -260,24 +286,17 @@ realize_cb( GtkWidget *gl_area_w )
 GtkWidget *
 ogl_widget_new( void )
 {
-	int gl_area_attributes[] = {
-		GDK_GL_RGBA,
-		GDK_GL_RED_SIZE, 1,
-		GDK_GL_GREEN_SIZE, 1,
-		GDK_GL_BLUE_SIZE, 1,
-		GDK_GL_DEPTH_SIZE, 1,
-		GDK_GL_DOUBLEBUFFER,
-		GDK_GL_NONE
-	};
+
 
 	/* Create the widget */
-	viewport_gl_area_w = gtk_gl_area_new( gl_area_attributes );
+	viewport_gl_area_w = gtk_gl_area_new();
 
 	/* Initialize widget's GL state when realized */
-	gtk_signal_connect( GTK_OBJECT(viewport_gl_area_w), "realize", GTK_SIGNAL_FUNC(realize_cb), NULL );
+	g_signal_connect( G_OBJECT(viewport_gl_area_w), "realize", G_CALLBACK(realize_cb), NULL );
+        g_signal_connect( G_OBJECT(viewport_gl_area_w), "render", G_CALLBACK(ogl_draw_wrapper), NULL );
+
 
 	return viewport_gl_area_w;
 }
-
 
 /* end ogl.c */

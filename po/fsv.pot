@@ -1,18 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR Free Software Foundation, Inc.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2000-01-27 19:57-0500\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-16 15:33-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
-"Content-Transfer-Encoding: ENCODING\n"
+"Content-Transfer-Encoding: 8bit\n"
 
 #. "Metanode"
 #: src/common.c:86
@@ -123,7 +126,7 @@ msgstr ""
 msgid "('file' command timed out)"
 msgstr ""
 
-#: src/common.c:714 src/common.c:720 src/dirtree.c:213
+#: src/common.c:714 src/common.c:720 src/dirtree.c:221
 msgid "/. (root)"
 msgstr ""
 
@@ -131,314 +134,318 @@ msgstr ""
 msgid "Change Root Directory"
 msgstr ""
 
-#: src/dialog.c:400
+#: src/dialog.c:409
 msgid "(New pattern)"
 msgstr ""
 
-#: src/dialog.c:404
+#: src/dialog.c:413
 msgid "(Default color)"
 msgstr ""
 
-#: src/dialog.c:568
+#: src/dialog.c:586
 msgid "Group Color"
 msgstr ""
 
-#: src/dialog.c:576
+#: src/dialog.c:594
 msgid "Default Color"
 msgstr ""
 
 #. Bring up color selection dialog for new color group
-#: src/dialog.c:844
+#: src/dialog.c:886
 msgid "New Color Group"
 msgstr ""
 
-#: src/dialog.c:856
+#: src/dialog.c:898
 msgid "Edit Wildcard Pattern"
 msgstr ""
 
-#: src/dialog.c:860
+#: src/dialog.c:902
 msgid "New Wildcard Pattern"
 msgstr ""
 
-#: src/dialog.c:946
+#: src/dialog.c:990
 msgid "Color "
 msgstr ""
 
-#: src/dialog.c:947
+#: src/dialog.c:991
 msgid "Wildcard pattern"
 msgstr ""
 
-#: src/dialog.c:949
+#: src/dialog.c:993
 msgid "Color Setup"
 msgstr ""
 
-#: src/dialog.c:963 src/window.c:139
+#: src/dialog.c:1007 src/window.c:140
 msgid "By node type"
 msgstr ""
 
 #. Color picker button
-#: src/dialog.c:982
+#: src/dialog.c:1026
 #, c-format
 msgid "Color: %s"
 msgstr ""
 
-#: src/dialog.c:996
+#: src/dialog.c:1040
 msgid "By date/time"
 msgstr ""
 
-#: src/dialog.c:1005
+#: src/dialog.c:1049
 msgid "Oldest:"
 msgstr ""
 
-#: src/dialog.c:1010
+#: src/dialog.c:1054
 msgid "Newest:"
 msgstr ""
 
-#: src/dialog.c:1015
+#: src/dialog.c:1059
 msgid "Color by:"
 msgstr ""
 
 #. Timestamp selection option menu
-#: src/dialog.c:1024
+#: src/dialog.c:1068
 msgid "Time of last access"
 msgstr ""
 
-#: src/dialog.c:1025
+#: src/dialog.c:1069
 msgid "Time of last modification"
 msgstr ""
 
-#: src/dialog.c:1026
+#: src/dialog.c:1070
 msgid "Time of last attribute change"
 msgstr ""
 
-#: src/dialog.c:1041
+#: src/dialog.c:1085
 msgid "Older Color"
 msgstr ""
 
-#: src/dialog.c:1043
+#: src/dialog.c:1087
 msgid "Older"
 msgstr ""
 
 #. Spectrum type selection
-#: src/dialog.c:1046
+#: src/dialog.c:1090
 msgid "Rainbow"
 msgstr ""
 
-#: src/dialog.c:1047
+#: src/dialog.c:1091
 msgid "Heat"
 msgstr ""
 
-#: src/dialog.c:1048
+#: src/dialog.c:1092
 msgid "Gradient"
 msgstr ""
 
-#: src/dialog.c:1055
+#: src/dialog.c:1099
 msgid "Newer Color"
 msgstr ""
 
-#: src/dialog.c:1057
+#: src/dialog.c:1101
 msgid "Newer"
 msgstr ""
 
-#: src/dialog.c:1066 src/window.c:145
+#: src/dialog.c:1110 src/window.c:146
 msgid "By wildcards"
 msgstr ""
 
-#: src/dialog.c:1079
+#: src/dialog.c:1123
 msgid "New color"
 msgstr ""
 
-#: src/dialog.c:1081
+#: src/dialog.c:1125
 msgid "Edit pattern"
 msgstr ""
 
-#: src/dialog.c:1084
+#: src/dialog.c:1128
 msgid "Delete"
 msgstr ""
 
 #. OK and Cancel buttons
-#: src/dialog.c:1097
+#: src/dialog.c:1141
 msgid "OK"
 msgstr ""
 
 #. spacer
-#: src/dialog.c:1099
+#: src/dialog.c:1143
 msgid "Cancel"
 msgstr ""
 
 #. Create message window to acknowledge action
-#: src/dialog.c:1127 src/window.c:164
+#. Help menu (right-justified)
+#: src/dialog.c:1171 src/window.c:165
 msgid "Help"
 msgstr ""
 
-#: src/dialog.c:1131
+#: src/dialog.c:1175
 msgid "Launching help browser . . ."
 msgstr ""
 
-#: src/dialog.c:1199 src/dialog.c:1501
+#: src/dialog.c:1243 src/dialog.c:1545
 msgid "Properties"
 msgstr ""
 
-#: src/dialog.c:1207
+#: src/dialog.c:1251
 msgid "General"
 msgstr ""
 
-#: src/dialog.c:1226
+#: src/dialog.c:1270
 msgid ""
 "Type:\n"
 "\n"
 msgstr ""
 
-#: src/dialog.c:1227
+#: src/dialog.c:1271
 msgid ""
 "Location:\n"
 "\n"
 msgstr ""
 
-#: src/dialog.c:1229
+#: src/dialog.c:1273
 msgid ""
 "Total size:\n"
 "\n"
 msgstr ""
 
-#: src/dialog.c:1231
+#: src/dialog.c:1275
 msgid "Size:\n"
 msgstr ""
 
-#: src/dialog.c:1232
+#: src/dialog.c:1276
 msgid ""
 "Allocation:\n"
 "\n"
 msgstr ""
 
-#: src/dialog.c:1234
+#: src/dialog.c:1278
 msgid "Owner:\n"
 msgstr ""
 
-#: src/dialog.c:1235
+#: src/dialog.c:1279
 msgid "Group:"
 msgstr ""
 
 #. Total size
-#: src/dialog.c:1251 src/dialog.c:1260 src/dialog.c:1268 src/dialog.c:1344
+#. Size
+#. Allocation
+#. Total size readout
+#: src/dialog.c:1295 src/dialog.c:1304 src/dialog.c:1312 src/dialog.c:1388
 #, c-format
 msgid "%s bytes"
 msgstr ""
 
 #. Owner (user)
-#: src/dialog.c:1273
+#: src/dialog.c:1317
 #, c-format
 msgid "%s (uid %u)"
 msgstr ""
 
 #. Group
-#: src/dialog.c:1277
+#: src/dialog.c:1321
 #, c-format
 msgid "%s (gid %u)"
 msgstr ""
 
-#: src/dialog.c:1290
+#: src/dialog.c:1334
 msgid "Modified:\n"
 msgstr ""
 
-#: src/dialog.c:1291
+#: src/dialog.c:1335
 msgid "AttribCh:\n"
 msgstr ""
 
-#: src/dialog.c:1292
+#: src/dialog.c:1336
 msgid "Accessed:"
 msgstr ""
 
-#: src/dialog.c:1326
+#: src/dialog.c:1370
 msgid "Contents"
 msgstr ""
 
-#: src/dialog.c:1333
+#: src/dialog.c:1377
 msgid "This directory contains:"
 msgstr ""
 
-#: src/dialog.c:1359
+#: src/dialog.c:1403
 msgid "File type"
 msgstr ""
 
-#: src/dialog.c:1361
+#: src/dialog.c:1405
 msgid "This file is recognized as:"
 msgstr ""
 
-#: src/dialog.c:1373
+#: src/dialog.c:1417
 msgid "Target"
 msgstr ""
 
 #. (Relative) name of target
-#: src/dialog.c:1376
+#: src/dialog.c:1420
 msgid "This symlink points to:"
 msgstr ""
 
 #. spacer
 #. Absolute name of target
-#: src/dialog.c:1384
+#: src/dialog.c:1428
 msgid "Absolute name of target:"
 msgstr ""
 
-#: src/dialog.c:1387
+#: src/dialog.c:1431
 msgid "(same as above)"
 msgstr ""
 
-#: src/dialog.c:1406
+#: src/dialog.c:1450
 msgid "Look at target node"
 msgstr ""
 
 #. Close button
-#: src/dialog.c:1419
+#: src/dialog.c:1463
 msgid "Close"
 msgstr ""
 
-#: src/dialog.c:1492
+#: src/dialog.c:1536
 msgid "Collapse"
 msgstr ""
 
-#: src/dialog.c:1494
+#: src/dialog.c:1538
 msgid "Expand"
 msgstr ""
 
-#: src/dialog.c:1496
+#: src/dialog.c:1540
 msgid "Expand all"
 msgstr ""
 
-#: src/dialog.c:1500
+#: src/dialog.c:1544
 msgid "Look at"
 msgstr ""
 
-#: src/filelist.c:161
+#: src/filelist.c:157
 msgid "1 node"
 msgstr ""
 
-#: src/filelist.c:165
+#: src/filelist.c:161
 #, c-format
 msgid "%d nodes"
 msgstr ""
 
-#: src/filelist.c:284
+#: src/filelist.c:296
 msgid "Type"
 msgstr ""
 
-#: src/filelist.c:285
+#: src/filelist.c:297
 msgid "Found"
 msgstr ""
 
-#: src/filelist.c:286
+#: src/filelist.c:298
 msgid "Bytes"
 msgstr ""
 
-#: src/filelist.c:301
+#: src/filelist.c:313
 msgid "TOTAL"
 msgstr ""
 
-#: src/filelist.c:353
+#: src/filelist.c:373
 msgid "Node type"
 msgstr ""
 
-#: src/filelist.c:354
+#: src/filelist.c:374
 msgid "Quantity"
 msgstr ""
 
@@ -452,9 +459,12 @@ msgstr ""
 
 #. Excess arguments!
 #: src/fsv.c:287
+#, c-format
 msgid "Junk in command line:"
 msgstr ""
 
+#. Check for OpenGL support
+#. gdk_gl_query() is deprecated in GTK3
 #: src/fsv.c:304
 msgid "fsv requires OpenGL support."
 msgstr ""
@@ -472,66 +482,67 @@ msgid "%d stats/sec"
 msgstr ""
 
 #. File menu
-#: src/window.c:112
+#: src/window.c:113
 msgid "File"
 msgstr ""
 
 #. File menu items
-#: src/window.c:114
+#: src/window.c:115
 msgid "Change root..."
 msgstr ""
 
-#: src/window.c:115
+#: src/window.c:116
 msgid "^N"
 msgstr ""
 
-#: src/window.c:118
+#: src/window.c:119
 msgid "Save settings"
 msgstr ""
 
-#: src/window.c:121
+#: src/window.c:122
 msgid "Exit"
 msgstr ""
 
-#: src/window.c:122
+#: src/window.c:123
 msgid "^Q"
 msgstr ""
 
 #. Vis menu
-#: src/window.c:125
+#: src/window.c:126
 msgid "Vis"
 msgstr ""
 
-#: src/window.c:129
+#: src/window.c:130
 msgid "DiscV"
 msgstr ""
 
-#: src/window.c:132
+#: src/window.c:133
 msgid "MapV"
 msgstr ""
 
-#: src/window.c:133
+#: src/window.c:134
 msgid "TreeV"
 msgstr ""
 
 #. Color menu
-#: src/window.c:136
+#: src/window.c:137
 msgid "Colors"
 msgstr ""
 
-#: src/window.c:142
+#: src/window.c:143
 msgid "By timestamp"
 msgstr ""
 
-#: src/window.c:149
+#: src/window.c:150
 msgid "Setup..."
 msgstr ""
 
+#. gtk_menu_item_set_right_justified(GTK_MENU_ITEM(gtk_menu_get_attach_widget(GTK_MENU(menu_w))), TRUE);
 #. Help menu items
-#: src/window.c:167
+#: src/window.c:168
 msgid "Contents..."
 msgstr ""
 
-#: src/window.c:169
+#: src/window.c:170
 msgid "About fsv..."
 msgstr ""

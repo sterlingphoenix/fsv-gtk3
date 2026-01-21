@@ -27,7 +27,7 @@
 #include "fsv.h"
 
 #include <gtk/gtk.h>
-#include <gtkgl/gdkgl.h>
+
 #include "getopt.h"
 
 #include "about.h"
@@ -300,7 +300,7 @@ main( int argc, char **argv )
 	gtk_init( &argc, &argv );
 
 	/* Check for OpenGL support */
-	if (!gdk_gl_query( ))
+	if (!1 /* gdk_gl_query() is deprecated in GTK3 */)
 		quit( _("fsv requires OpenGL support.") );
 
 	window_init( initial_fsv_mode );
