@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-16 15:33-0600\n"
+"POT-Creation-Date: 2026-01-22 09:09-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -458,14 +458,14 @@ msgid ""
 msgstr ""
 
 #. Excess arguments!
-#: src/fsv.c:287
+#: src/fsv.c:292
 #, c-format
 msgid "Junk in command line:"
 msgstr ""
 
 #. Check for OpenGL support
 #. gdk_gl_query() is deprecated in GTK3
-#: src/fsv.c:304
+#: src/fsv.c:309
 msgid "fsv requires OpenGL support."
 msgstr ""
 

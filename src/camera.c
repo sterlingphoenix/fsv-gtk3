@@ -538,19 +538,6 @@ camera_update_scrollbars( boolean hard_update )
     GtkAdjustment *x_scrollbar_adj = NULL;
     GtkAdjustment *y_scrollbar_adj = NULL;
     
-    /* * TODO: Once we find the real widget names, we will uncomment this.
-     * For now, we comment it out to fix the build.
-     */
-    /*
-    extern GtkWidget *x_scrollbar_w;
-    extern GtkWidget *y_scrollbar_w;
-
-    if (x_scrollbar_w)
-        x_scrollbar_adj = gtk_range_get_adjustment(GTK_RANGE(x_scrollbar_w));
-    if (y_scrollbar_w)
-        y_scrollbar_adj = gtk_range_get_adjustment(GTK_RANGE(y_scrollbar_w));
-    */
-
     /* Initialize our dummy adjustments */
     if (x_adj == NULL) 
         x_adj = (GtkAdjustment*) gtk_adjustment_new(0,0,0,0,0,0);
@@ -560,11 +547,11 @@ camera_update_scrollbars( boolean hard_update )
     /* Calculate Target State (Empty function currently) */
     mapv_get_scrollbar_states( x_adj, y_adj );
 
-    /* Interpolate */
-    if (x_scrollbar_adj != NULL && x_adj != NULL) {
+    /* Added extra NULL checks to prevent Gtk-CRITICAL errors */
+    if (x_scrollbar_adj && x_adj && prev_x_scrollbar_adj) {
         adj_interpolate( x_scrollbar_adj, camera->pan_part, prev_x_scrollbar_adj, x_adj );
     }
-    if (y_scrollbar_adj != NULL && y_adj != NULL) {
+    if (y_scrollbar_adj && y_adj && prev_y_scrollbar_adj) {
         adj_interpolate( y_scrollbar_adj, camera->pan_part, prev_y_scrollbar_adj, y_adj );
     }
     

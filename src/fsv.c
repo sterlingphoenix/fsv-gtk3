@@ -224,6 +224,11 @@ main( int argc, char **argv )
 	camera->near_clip = 1.0;
 	camera->far_clip = 2.0;
 
+        /* FORCE COMPATIBILITY PROFILE: 
+        Tell Mesa to provide "Legacy" features (glBegin, gluPerspective)
+        even though we are on a modern system. */
+        setenv("MESA_GL_VERSION_OVERRIDE", "4.5COMPAT", 1);
+
 #ifdef DEBUG
 	debug_init( );
 #endif

@@ -89,24 +89,25 @@ ogl_init( void )
 
 /* --- NEW GTK3 HELPER FUNCTIONS --- */
 
-/* 1. The Wrapper: Makes your old void function compatible with GTK3's "draw" signal */
-//gboolean ogl_draw_wrapper(GtkWidget *widget, cairo_t *cr, gpointer data) {
-//    /* Note: In GTK3, drawing happens here. 
-//       If your ogl_draw() sets up the GL context, this should work. */
-//    ogl_draw(); 
-//    return TRUE; // Tell GTK "We handled the drawing, don't clear the screen"
-//}
-
-
-/* UPDATED: Uses GtkGLArea and GdkGLContext instead of cairo_t */
 gboolean ogl_draw_wrapper(GtkGLArea *area, GdkGLContext *context, gpointer data) {
-    /* Call the main OpenGL drawing routine */
-    ogl_draw(); 
-    /* returning TRUE tells GTK: "I am done drawing, please SWAP BUFFERS now." */
-    return TRUE; 
+    /* 1. Camera Safety */
+    if (camera != NULL) {
+        if (camera->distance < 1.0) camera->distance = 50.0;
+        if (camera->fov < 10.0) camera->fov = 45.0;
+        if (camera->near_clip < 0.1) camera->near_clip = 1.0;
+        if (camera->far_clip < 100.0) camera->far_clip = 1000.0;
+    }
+
+    /* 2. Resize (Should work now with COMPAT profile) */
+    ogl_resize();
+
+    /* 3. Draw */
+    ogl_draw();
+
+    return TRUE;
 }
 
-/* 2. The Bridge: Allows other files (like animation.c) to safely ask for a redraw */
+/* Restore the bridge function for animation.c */
 void ogl_request_redraw(void) {
     if (viewport_gl_area_w != NULL) {
         gtk_widget_queue_draw(viewport_gl_area_w);
@@ -114,17 +115,32 @@ void ogl_request_redraw(void) {
 }
 
 
-
-
-/* Changes viewport size, after a window resize */
-void
-ogl_resize( void )
+void ogl_resize( void )
 {
-	int width, height;
+    int width, height;
+    float aspect;
 
-	width = gtk_widget_get_allocated_width(viewport_gl_area_w);
-	height = gtk_widget_get_allocated_height(viewport_gl_area_w);
-	glViewport( 0, 0, width, height );
+    /* 1. Get dimensions */
+    if (viewport_gl_area_w == NULL) return;
+    
+    width = gtk_widget_get_allocated_width(viewport_gl_area_w);
+    height = gtk_widget_get_allocated_height(viewport_gl_area_w);
+
+    if (height <= 0) height = 1; /* Prevent divide by zero */
+    aspect = (float)width / (float)height;
+
+    /* 2. Set the Viewport (The Screen Rectangle) */
+    glViewport( 0, 0, width, height );
+
+    /* 3. Set the Projection Matrix (The Camera Lens) -- THIS WAS MISSING */
+    glMatrixMode( GL_PROJECTION );
+    glLoadIdentity();
+    
+    /* Field of View: 45 degrees, Near Clip: 1.0, Far Clip: 1000.0 */
+    gluPerspective( 45.0f, aspect, 1.0f, 1000.0f );
+
+    /* 4. Switch back to Model View so drawing works later */
+    glMatrixMode( GL_MODELVIEW );
 }
 
 
@@ -290,6 +306,10 @@ ogl_widget_new( void )
 
 	/* Create the widget */
 	viewport_gl_area_w = gtk_gl_area_new();
+
+        /* Force Legacy OpenGL (2.1) to allow glMatrixMode / gluPerspective */
+        gtk_gl_area_set_required_version(GTK_GL_AREA(viewport_gl_area_w), 2, 1);
+        gtk_gl_area_set_has_depth_buffer(GTK_GL_AREA(viewport_gl_area_w), TRUE);
 
 	/* Initialize widget's GL state when realized */
 	g_signal_connect( G_OBJECT(viewport_gl_area_w), "realize", G_CALLBACK(realize_cb), NULL );
