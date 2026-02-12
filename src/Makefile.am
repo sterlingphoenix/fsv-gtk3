@@ -37,6 +37,7 @@ noinst_HEADERS = \
 	gui.h \
 	ogl.h \
 	scanfs.h \
+	search.h \
 	tmaptext.h \
 	viewport.h \
 	window.h
@@ -57,6 +58,7 @@ fsv_SOURCES = \
 	gui.c \
 	ogl.c \
 	scanfs.c \
+	search.c \
 	tmaptext.c \
 	viewport.c \
 	window.c

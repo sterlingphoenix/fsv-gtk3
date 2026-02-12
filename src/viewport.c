@@ -50,6 +50,12 @@ static GNode *indicated_node = NULL;
 /* Previous mouse pointer coordinates */
 static int prev_x = 0, prev_y = 0;
 
+/* Drag detection state */
+#define DRAG_THRESHOLD 4
+static boolean btn1_pressed = FALSE;
+static boolean btn1_is_dragging = FALSE;
+static int btn1_press_x = 0, btn1_press_y = 0;
+
 
 /* Receives a newly created node table from scanfs( ) */
 void
@@ -155,34 +161,42 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		btn1 = ev_button->button == 1;
 		btn2 = ev_button->button == 2;
 		btn3 = ev_button->button == 3;
-		ctrl_key = ev_button->state & GDK_CONTROL_MASK;
 		x = (int)ev_button->x;
 		y = (int)ev_button->y;
 		if (camera_moving( )) {
-			/* Yipe! Impatient user */
 			camera_pan_finish( );
 			indicated_node = NULL;
 		}
-		else if (!ctrl_key) {
-			if (btn2)
-				indicated_node = NULL;
-			else
-				indicated_node = node_at_location( x, y, &face_id );
+		else if (btn1) {
+			/* Record press position for drag detection */
+			btn1_pressed = TRUE;
+			btn1_is_dragging = FALSE;
+			btn1_press_x = x;
+			btn1_press_y = y;
+			/* Identify and highlight node under cursor */
+			indicated_node = node_at_location( x, y, &face_id );
 			if (indicated_node == NULL) {
 				geometry_highlight_node( NULL, FALSE );
 				window_statusbar( SB_RIGHT, "" );
 			}
 			else {
-				if (geometry_should_highlight( indicated_node, face_id ) || btn1)
-					geometry_highlight_node( indicated_node, btn1 );
-				else
-					geometry_highlight_node( NULL, FALSE );
+				geometry_highlight_node( indicated_node, TRUE );
 				window_statusbar( SB_RIGHT, node_absname( indicated_node ) );
-				if (btn3) {
-					/* Bring up context-sensitive menu */
-					context_menu( indicated_node, ev_button );
-					filelist_show_entry( indicated_node );
-				}
+			}
+		}
+		else if (btn2) {
+			indicated_node = NULL;
+			geometry_highlight_node( NULL, FALSE );
+			window_statusbar( SB_RIGHT, "" );
+		}
+		else if (btn3) {
+			/* Right-click: context menu */
+			indicated_node = node_at_location( x, y, &face_id );
+			if (indicated_node != NULL) {
+				geometry_highlight_node( indicated_node, FALSE );
+				window_statusbar( SB_RIGHT, node_absname( indicated_node ) );
+				context_menu( indicated_node, ev_button );
+				filelist_show_entry( indicated_node );
 			}
 		}
 		prev_x = x;
@@ -190,15 +204,21 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		break;
 
 		case GDK_2BUTTON_PRESS:
-		/* Ignore second click of a double-click */
+		/* Double-click: navigate to node */
+		ev_button = (GdkEventButton *)event;
+		if (ev_button->button == 1 && !camera_moving( ) && indicated_node != NULL) {
+			camera_look_at( indicated_node );
+			btn1_pressed = FALSE;
+			btn1_is_dragging = FALSE;
+		}
 		break;
 
 		case GDK_BUTTON_RELEASE:
 		ev_button = (GdkEventButton *)event;
-		btn1 = ev_button->state & GDK_BUTTON1_MASK;
-		ctrl_key = ev_button->state & GDK_CONTROL_MASK;
-		if (btn1 && !ctrl_key && !camera_moving( ) && (indicated_node != NULL))
-			camera_look_at( indicated_node );
+		if (ev_button->button == 1) {
+			btn1_pressed = FALSE;
+			btn1_is_dragging = FALSE;
+		}
 		gui_cursor( gl_area_w, -1 );
 		break;
 
@@ -206,8 +226,6 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		ev_motion = (GdkEventMotion *)event;
 		btn1 = ev_motion->state & GDK_BUTTON1_MASK;
 		btn2 = ev_motion->state & GDK_BUTTON2_MASK;
-		btn3 = ev_motion->state & GDK_BUTTON3_MASK;
-		ctrl_key = ev_motion->state & GDK_CONTROL_MASK;
 		x = (int)ev_motion->x;
 		y = (int)ev_motion->y;
 		if (!camera_moving( ) && !gtk_events_pending( )) {
@@ -218,38 +236,55 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 				camera_dolly( - dy );
 				indicated_node = NULL;
 			}
-			else if (ctrl_key && btn1) {
-				/* Revolve the camera */
-				gui_cursor( gl_area_w, GDK_FLEUR );
-				dx = MOUSE_SENSITIVITY * (x - prev_x);
-				dy = MOUSE_SENSITIVITY * (y - prev_y);
-				camera_revolve( dx, dy );
-				indicated_node = NULL;
-			}
-			else if (!ctrl_key && (btn1 || btn3)) {
-				/* Pointless dragging */
-				if (indicated_node != NULL) {
-					node = node_at_location( x, y, &face_id );
-					if (node != indicated_node)
+			else if (btn1) {
+				/* Check if drag threshold exceeded */
+				if (!btn1_is_dragging) {
+					int total_dx = x - btn1_press_x;
+					int total_dy = y - btn1_press_y;
+					if (abs( total_dx ) > DRAG_THRESHOLD || abs( total_dy ) > DRAG_THRESHOLD) {
+						btn1_is_dragging = TRUE;
 						indicated_node = NULL;
+						geometry_highlight_node( NULL, FALSE );
+						window_statusbar( SB_RIGHT, "" );
+					}
+				}
+				if (btn1_is_dragging) {
+					/* Orbit the camera */
+					gui_cursor( gl_area_w, GDK_FLEUR );
+					dx = MOUSE_SENSITIVITY * (x - prev_x);
+					dy = MOUSE_SENSITIVITY * (y - prev_y);
+					camera_revolve( dx, dy );
 				}
 			}
-                        else
-				indicated_node = node_at_location( x, y, &face_id );
-			/* Update node highlighting */
-			if (indicated_node == NULL) {
-				geometry_highlight_node( NULL, FALSE );
-				window_statusbar( SB_RIGHT, "" );
-			}
 			else {
-				if (geometry_should_highlight( indicated_node, face_id ) || btn1)
-					geometry_highlight_node( indicated_node, btn1 );
-				else
-					geometry_highlight_node( NULL, FALSE);
-				window_statusbar( SB_RIGHT, node_absname( indicated_node ) );
+				/* No button: hover highlight */
+				indicated_node = node_at_location( x, y, &face_id );
+				if (indicated_node == NULL) {
+					geometry_highlight_node( NULL, FALSE );
+					window_statusbar( SB_RIGHT, "" );
+				}
+				else {
+					if (geometry_should_highlight( indicated_node, face_id ))
+						geometry_highlight_node( indicated_node, FALSE );
+					else
+						geometry_highlight_node( NULL, FALSE );
+					window_statusbar( SB_RIGHT, node_absname( indicated_node ) );
+				}
 			}
 			prev_x = x;
 			prev_y = y;
+		}
+		break;
+
+		case GDK_SCROLL:
+		/* Scroll wheel zoom */
+		if (!camera_moving( )) {
+			GdkEventScroll *ev_scroll = (GdkEventScroll *)event;
+			if (ev_scroll->direction == GDK_SCROLL_UP)
+				camera_dolly( -16.0 );
+			else if (ev_scroll->direction == GDK_SCROLL_DOWN)
+				camera_dolly( 16.0 );
+			indicated_node = NULL;
 		}
 		break;
 
@@ -259,6 +294,8 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		window_statusbar( SB_RIGHT, "" );
 		gui_cursor( gl_area_w, -1 );
 		indicated_node = NULL;
+		btn1_pressed = FALSE;
+		btn1_is_dragging = FALSE;
 		break;
 
 		default:

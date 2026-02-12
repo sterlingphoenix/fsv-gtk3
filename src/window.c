@@ -35,6 +35,7 @@
 #include "filelist.h"
 #include "fsv.h"
 #include "gui.h"
+#include "search.h"
 #include "viewport.h"
 
 /* Toolbar button icons */
@@ -86,6 +87,8 @@ window_init( FsvMode fsv_mode )
         GtkWidget *gl_area_w;
 	GtkWidget *x_scrollbar_w;
 	GtkWidget *y_scrollbar_w;
+	GtkWidget *search_entry_w;
+	GtkWidget *search_next_button_w;
 	int window_width, window_height;
 
 	/* Main window widget */
@@ -200,6 +203,14 @@ window_init( FsvMode fsv_mode )
 	G_LIST_APPEND(sw_widget_list, button_w);
 	birdseye_view_tbutton_w = button_w;
 
+	/* Search bar */
+	hbox_w = gui_hbox_add( left_vbox_w, 2 );
+	gui_box_set_packing( hbox_w, EXPAND, FILL, AT_START );
+	search_entry_w = gui_entry_add( hbox_w, NULL, NULL, NULL );
+	search_next_button_w = gui_button_add( hbox_w, _("Next"), NULL, NULL );
+	gtk_widget_set_sensitive( search_next_button_w, FALSE );
+	search_pass_widgets( search_entry_w, search_next_button_w );
+
 	/* Frame to encase the directory tree / file list */
 	frame_w = gui_frame_add( left_vbox_w, NULL );
 
@@ -246,6 +257,7 @@ window_init( FsvMode fsv_mode )
 	gui_window_icon_xpm( main_window_w, fsv_icon_xpm );
 
 	/* Attach keybindings */
+	gui_keybind( search_next_button_w, "^G" );
 	gui_keybind( main_window_w, NULL );
 
 	/* Send out the widgets to their respective modules */
