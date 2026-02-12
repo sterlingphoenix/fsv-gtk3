@@ -27,7 +27,6 @@
 #include "fsv.h"
 
 #include <gtk/gtk.h>
-
 #include "getopt.h"
 
 #include "about.h"
@@ -37,6 +36,7 @@
 #include "filelist.h"
 #include "geometry.h"
 #include "gui.h" /* gui_update( ) */
+#include "ogl.h" /* ogl_gl_query( ) */
 #include "scanfs.h"
 #include "window.h"
 
@@ -83,8 +83,9 @@ static const char usage_summary[] = __("\n"
 
 /* Helper function for fsv_set_mode( ) */
 static void
-initial_camera_pan( char *mesg )
+initial_camera_pan( void *data )
 {
+	char *mesg = (char *)data;
 	/* To prevent root_dnode from appearing twice in a row at
 	 * the bottom of the node history stack */
 	G_LIST_PREPEND(globals.history, NULL);
@@ -224,11 +225,6 @@ main( int argc, char **argv )
 	camera->near_clip = 1.0;
 	camera->far_clip = 2.0;
 
-        /* FORCE COMPATIBILITY PROFILE: 
-        Tell Mesa to provide "Legacy" features (glBegin, gluPerspective)
-        even though we are on a modern system. */
-        setenv("MESA_GL_VERSION_OVERRIDE", "4.5COMPAT", 1);
-
 #ifdef DEBUG
 	debug_init( );
 #endif
@@ -305,7 +301,7 @@ main( int argc, char **argv )
 	gtk_init( &argc, &argv );
 
 	/* Check for OpenGL support */
-	if (!1 /* gdk_gl_query() is deprecated in GTK3 */)
+	if (!ogl_gl_query( ))
 		quit( _("fsv requires OpenGL support.") );
 
 	window_init( initial_fsv_mode );

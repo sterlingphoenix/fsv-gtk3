@@ -25,9 +25,10 @@
 #include "ogl.h"
 
 #include <gtk/gtk.h>
-
+#include <gdk/gdkx.h>
 #include <GL/gl.h>
-#include <GL/glu.h> /* gluPickMatrix( ) */
+#include <GL/glu.h>
+#include <GL/glx.h>
 
 #include "animation.h" /* redraw( ) */
 #include "camera.h"
@@ -37,6 +38,33 @@
 
 /* Main viewport OpenGL area widget */
 static GtkWidget *viewport_gl_area_w = NULL;
+
+/* GLX context and visual info */
+static GLXContext glx_context = NULL;
+
+
+/* Makes the GL context current for the widget */
+static void
+gl_area_make_current( GtkWidget *widget )
+{
+	GdkWindow *gdk_win = gtk_widget_get_window( widget );
+	Display *xdisplay = GDK_WINDOW_XDISPLAY( gdk_win );
+	Window xwindow = GDK_WINDOW_XID( gdk_win );
+
+	glXMakeCurrent( xdisplay, xwindow, glx_context );
+}
+
+
+/* Swap buffers for the GL widget */
+static void
+gl_area_swap_buffers( GtkWidget *widget )
+{
+	GdkWindow *gdk_win = gtk_widget_get_window( widget );
+	Display *xdisplay = GDK_WINDOW_XDISPLAY( gdk_win );
+	Window xwindow = GDK_WINDOW_XID( gdk_win );
+
+	glXSwapBuffers( xdisplay, xwindow );
+}
 
 
 /* Initializes OpenGL state */
@@ -87,60 +115,18 @@ ogl_init( void )
 	text_init( );
 }
 
-/* --- NEW GTK3 HELPER FUNCTIONS --- */
 
-gboolean ogl_draw_wrapper(GtkGLArea *area, GdkGLContext *context, gpointer data) {
-    /* 1. Camera Safety */
-    if (camera != NULL) {
-        if (camera->distance < 1.0) camera->distance = 50.0;
-        if (camera->fov < 10.0) camera->fov = 45.0;
-        if (camera->near_clip < 0.1) camera->near_clip = 1.0;
-        if (camera->far_clip < 100.0) camera->far_clip = 1000.0;
-    }
-
-    /* 2. Resize (Should work now with COMPAT profile) */
-    ogl_resize();
-
-    /* 3. Draw */
-    ogl_draw();
-
-    return TRUE;
-}
-
-/* Restore the bridge function for animation.c */
-void ogl_request_redraw(void) {
-    if (viewport_gl_area_w != NULL) {
-        gtk_widget_queue_draw(viewport_gl_area_w);
-    }
-}
-
-
-void ogl_resize( void )
+/* Changes viewport size, after a window resize */
+void
+ogl_resize( void )
 {
-    int width, height;
-    float aspect;
+	GtkAllocation allocation;
+	int width, height;
 
-    /* 1. Get dimensions */
-    if (viewport_gl_area_w == NULL) return;
-    
-    width = gtk_widget_get_allocated_width(viewport_gl_area_w);
-    height = gtk_widget_get_allocated_height(viewport_gl_area_w);
-
-    if (height <= 0) height = 1; /* Prevent divide by zero */
-    aspect = (float)width / (float)height;
-
-    /* 2. Set the Viewport (The Screen Rectangle) */
-    glViewport( 0, 0, width, height );
-
-    /* 3. Set the Projection Matrix (The Camera Lens) -- THIS WAS MISSING */
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-    
-    /* Field of View: 45 degrees, Near Clip: 1.0, Far Clip: 1000.0 */
-    gluPerspective( 45.0f, aspect, 1.0f, 1000.0f );
-
-    /* 4. Switch back to Model View so drawing works later */
-    glMatrixMode( GL_MODELVIEW );
+	gtk_widget_get_allocation( viewport_gl_area_w, &allocation );
+	width = allocation.width;
+	height = allocation.height;
+	glViewport( 0, 0, width, height );
 }
 
 
@@ -223,7 +209,8 @@ setup_modelview_matrix( void )
 
 /* (Re)draws the viewport
  * NOTE: Don't call this directly! Use redraw( ) */
-void ogl_draw( void )
+void
+ogl_draw( void )
 {
 	static FsvMode prev_mode = FSV_NONE;
 	int err;
@@ -248,7 +235,7 @@ void ogl_draw( void )
 			return;
 	}
 
-//	gtk_gl_area_swapbuffers( GTK_GL_AREA(viewport_gl_area_w) ); // TODO GTK3: Port to render signal
+	gl_area_swap_buffers( viewport_gl_area_w );
 }
 
 
@@ -256,7 +243,8 @@ void ogl_draw( void )
  * occur under the given viewport coordinates (x,y) (where (0,0) indicates
  * the upper left corner). Return value is the number of names (hit records)
  * stored in the select buffer */
-int ogl_select( int x, int y, const GLuint **selectbuf_ptr )
+int
+ogl_select( int x, int y, const GLuint **selectbuf_ptr )
 {
 	static GLuint selectbuf[1024];
 	GLint viewport[4];
@@ -289,12 +277,79 @@ int ogl_select( int x, int y, const GLuint **selectbuf_ptr )
 }
 
 
-/* Helper callback for ogl_area_new( ) */
+/* Helper callback for realize */
 static void
-realize_cb( GtkWidget *gl_area_w )
+realize_cb( GtkWidget *widget, gpointer user_data )
 {
-	gtk_gl_area_make_current( GTK_GL_AREA(gl_area_w) );
+	GdkWindow *gdk_win;
+	Display *xdisplay;
+	GdkScreen *screen;
+	int xscreen;
+	XVisualInfo *xvi;
+	Window xwindow;
+	int gl_attribs[] = {
+		GLX_RGBA,
+		GLX_RED_SIZE, 1,
+		GLX_GREEN_SIZE, 1,
+		GLX_BLUE_SIZE, 1,
+		GLX_DEPTH_SIZE, 1,
+		GLX_DOUBLEBUFFER,
+		None
+	};
+
+	gdk_win = gtk_widget_get_window( widget );
+	xdisplay = GDK_WINDOW_XDISPLAY( gdk_win );
+	screen = gtk_widget_get_screen( widget );
+	xscreen = GDK_SCREEN_XNUMBER( screen );
+	xwindow = GDK_WINDOW_XID( gdk_win );
+
+	/* Get visual info for GLX */
+	xvi = glXChooseVisual( xdisplay, xscreen, gl_attribs );
+	if (xvi == NULL) {
+		g_error( "Cannot find suitable GLX visual" );
+		return;
+	}
+
+	/* Create GLX context */
+	glx_context = glXCreateContext( xdisplay, xvi, NULL, True );
+	XFree( xvi );
+
+	if (glx_context == NULL) {
+		g_error( "Cannot create GLX context" );
+		return;
+	}
+
+	/* Make context current and initialize OpenGL */
+	glXMakeCurrent( xdisplay, xwindow, glx_context );
 	ogl_init( );
+}
+
+
+/* Helper callback for configure (resize) */
+static gboolean
+configure_cb( GtkWidget *widget, GdkEventConfigure *event, gpointer user_data )
+{
+	if (glx_context == NULL)
+		return FALSE;
+
+	gl_area_make_current( widget );
+	ogl_resize( );
+
+	return FALSE;
+}
+
+
+/* Helper callback for expose (redraw) */
+static gboolean
+expose_cb( GtkWidget *widget, GdkEventExpose *event, gpointer user_data )
+{
+	if (glx_context == NULL)
+		return FALSE;
+
+	gl_area_make_current( widget );
+	ogl_refresh( );
+
+	return TRUE;
 }
 
 
@@ -302,21 +357,31 @@ realize_cb( GtkWidget *gl_area_w )
 GtkWidget *
 ogl_widget_new( void )
 {
+	/* Use a drawing area as the base widget for our GL context */
+	viewport_gl_area_w = gtk_drawing_area_new( );
 
+	/* Request double-buffered visual via GDK */
+	gtk_widget_set_double_buffered( viewport_gl_area_w, FALSE );
 
-	/* Create the widget */
-	viewport_gl_area_w = gtk_gl_area_new();
-
-        /* Force Legacy OpenGL (2.1) to allow glMatrixMode / gluPerspective */
-        gtk_gl_area_set_required_version(GTK_GL_AREA(viewport_gl_area_w), 2, 1);
-        gtk_gl_area_set_has_depth_buffer(GTK_GL_AREA(viewport_gl_area_w), TRUE);
-
-	/* Initialize widget's GL state when realized */
-	g_signal_connect( G_OBJECT(viewport_gl_area_w), "realize", G_CALLBACK(realize_cb), NULL );
-        g_signal_connect( G_OBJECT(viewport_gl_area_w), "render", G_CALLBACK(ogl_draw_wrapper), NULL );
-
+	/* Connect signals */
+	g_signal_connect( viewport_gl_area_w, "realize", G_CALLBACK(realize_cb), NULL );
+	g_signal_connect( viewport_gl_area_w, "configure-event", G_CALLBACK(configure_cb), NULL );
+	g_signal_connect( viewport_gl_area_w, "expose-event", G_CALLBACK(expose_cb), NULL );
 
 	return viewport_gl_area_w;
 }
+
+
+/* Returns TRUE if GL is available (replaces gdk_gl_query) */
+gboolean
+ogl_gl_query( void )
+{
+	Display *xdisplay;
+	int error_base, event_base;
+
+	xdisplay = GDK_DISPLAY_XDISPLAY( gdk_display_get_default( ) );
+	return glXQueryExtension( xdisplay, &error_base, &event_base );
+}
+
 
 /* end ogl.c */

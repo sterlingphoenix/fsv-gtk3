@@ -36,7 +36,7 @@
 /* Radio menu items fire a callback on deselection as well as selection,
  * which is not quite what we want */
 #define IGNORE_MENU_ITEM_DESELECT(menuitem) \
-	if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuitem))) return
+	if (!GTK_CHECK_MENU_ITEM(menuitem)->active) return
 
 
 /**** MAIN WINDOW **************************************/
@@ -176,7 +176,7 @@ on_cd_up_button_clicked( GtkButton *button, gpointer user_data )
 void
 on_birdseye_view_togglebutton_toggled( GtkToggleButton *togglebutton, gpointer user_data )
 {
-	camera_birdseye_view( gtk_toggle_button_get_active(togglebutton) );
+	camera_birdseye_view( togglebutton->active );
 }
 
 

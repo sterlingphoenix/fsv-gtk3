@@ -54,15 +54,11 @@ static float framerate = 0.0;
 /* TRUE for as long as something somewhere is being animated */
 static boolean animation_active = FALSE;
 
-/* Tell this file that the function exists in ogl.c */
-void ogl_request_redraw(void);
-
-
 
 /* Schedules an event (callback) to occur after the given number of
  * frames have elapsed */
 void
-schedule_event( void (*event_cb)( ), void *data, int nframes )
+schedule_event( void (*event_cb)( void * ), void *data, int nframes )
 {
 	ScheduledEvent *new_schevent;
 
@@ -414,8 +410,8 @@ framerate_iteration( int mesg )
 
 
 /* Top-level animation loop */
-static gboolean
-animation_loop( gpointer data )
+static boolean
+animation_loop( void )
 {
 	boolean state_changed, schevents_pending = FALSE;
 
@@ -424,7 +420,7 @@ animation_loop( gpointer data )
 
 	if (globals.need_redraw) {
 		/* Redraw viewport */
-		ogl_request_redraw( );
+		ogl_draw( );
 
 		/* Update framerate */
 		framerate_iteration( FRAME_RENDERED );
@@ -443,7 +439,7 @@ animation_loop( gpointer data )
 	}
 
 	/* (returning FALSE terminates looping) */
-	return animation_active ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
+	return animation_active;
 }
 
 
@@ -453,7 +449,7 @@ redraw( void )
 {
 	/* Ensure that animation loop is active */
 	if (!animation_active)
-		g_idle_add_full( G_PRIORITY_LOW, animation_loop, NULL, NULL );
+		g_idle_add_full( G_PRIORITY_LOW, (GSourceFunc)animation_loop, NULL, NULL );
 
 	animation_active = TRUE;
 	globals.need_redraw = TRUE;

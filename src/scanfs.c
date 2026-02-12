@@ -169,13 +169,13 @@ process_dir( const char *dir, GNode *dnode )
 			process_dir( node_absname( node ), node );
 
 			/* Move new descriptor into working memory */
-			andesc = (union AnyNodeDesc *)g_slice_new( DirNodeDesc );
+			andesc = g_mem_chunk_alloc( dir_ndesc_memchunk );
 			memcpy( andesc, DIR_NODE_DESC(node), sizeof(DirNodeDesc) );
 			node->data = andesc;
 		}
 		else {
 			/* Move new descriptor into working memory */
-			andesc = (union AnyNodeDesc *)g_slice_new( NodeDesc );
+			andesc = g_mem_chunk_alloc( ndesc_memchunk );
 			memcpy( andesc, NODE_DESC(node), sizeof(NodeDesc) );
 			node->data = andesc;
 		}
@@ -306,12 +306,18 @@ scanfs( const char *dir )
 		geometry_free_recursive( globals.fstree );
 		g_node_destroy( globals.fstree );
 		/* General memory cleanup */
-// 		g_blow_chunks( ); // g_mem_chunk is deprecated
+		g_blow_chunks( );
 	}
 
 	/* Set up memory chunks to hold descriptor structs */
-
-
+	if (ndesc_memchunk == NULL)
+		ndesc_memchunk = g_mem_chunk_create( NodeDesc, 64, G_ALLOC_ONLY );
+	else
+		g_mem_chunk_reset( ndesc_memchunk );
+	if (dir_ndesc_memchunk == NULL)
+		dir_ndesc_memchunk = g_mem_chunk_create( DirNodeDesc, 16, G_ALLOC_ONLY );
+	else
+		g_mem_chunk_reset( dir_ndesc_memchunk );
 
 	/* ...and string chunks to hold name strings */
 	if (name_strchunk != NULL)
@@ -329,10 +335,10 @@ scanfs( const char *dir )
 	root_dir = xgetcwd( );
 
 	/* Set up fstree metanode */
-	globals.fstree = g_node_new( g_slice_new0( DirNodeDesc ) );
+	globals.fstree = g_node_new( g_mem_chunk_alloc( dir_ndesc_memchunk ) );
 	NODE_DESC(globals.fstree)->type = NODE_METANODE;
 	NODE_DESC(globals.fstree)->id = node_id++;
-	name = g_path_get_dirname( root_dir );
+	name = g_dirname( root_dir );
 	NODE_DESC(globals.fstree)->name = g_string_chunk_insert( name_strchunk, name );
 	g_free( name );
 	DIR_NODE_DESC(globals.fstree)->ctnode = NULL; /* needed in dirtree_entry_new( ) */
@@ -341,11 +347,11 @@ scanfs( const char *dir )
 	DIR_NODE_DESC(globals.fstree)->c_dlist = NULL_DLIST;
 
 	/* Set up root directory node */
-	g_node_append_data( globals.fstree, g_slice_new0( DirNodeDesc ) );
+	g_node_append_data( globals.fstree, g_mem_chunk_alloc( dir_ndesc_memchunk ) );
 	/* Note: We can now use root_dnode to refer to the node just
 	 * created (it is an alias for globals.fstree->children) */
 	NODE_DESC(root_dnode)->id = node_id++;
-	name = g_path_get_basename( root_dir );
+	name = g_basename( root_dir );
 	NODE_DESC(root_dnode)->name = g_string_chunk_insert( name_strchunk, name );
 	DIR_NODE_DESC(root_dnode)->a_dlist = NULL_DLIST;
 	DIR_NODE_DESC(root_dnode)->b_dlist = NULL_DLIST;
@@ -355,13 +361,13 @@ scanfs( const char *dir )
 
 	/* GUI stuff */
 	filelist_scan_monitor_init( );
-	handler_id = g_timeout_add( SCAN_MONITOR_PERIOD, (GSourceFunc)scan_monitor, NULL );
+	handler_id = gtk_timeout_add( SCAN_MONITOR_PERIOD, (GtkFunction)scan_monitor, NULL );
 
 	/* Let the disk thrashing begin */
 	process_dir( root_dir, root_dnode );
 
 	/* GUI stuff again */
-	g_source_remove( handler_id );
+	gtk_timeout_remove( handler_id );
 	window_statusbar( SB_RIGHT, "" );
 	dirtree_no_more_entries( );
 	gui_update( );

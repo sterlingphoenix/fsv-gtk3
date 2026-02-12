@@ -36,6 +36,7 @@ int ogl_select( int x, int y, const GLuint **selectbuf_ptr );
 #endif
 #ifdef __GTK_H__
 GtkWidget *ogl_widget_new( void );
+gboolean ogl_gl_query( void );
 #endif
 
 
