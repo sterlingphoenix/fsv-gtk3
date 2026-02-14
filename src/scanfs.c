@@ -331,14 +331,15 @@ scanfs( const char *dir )
 	node_id = 0;
 
 	/* Get absolute path of desired root (top-level) directory */
-	chdir( dir );
+	if (chdir( dir ) != 0)
+		return;
 	root_dir = xgetcwd( );
 
 	/* Set up fstree metanode */
 	globals.fstree = g_node_new( g_mem_chunk_alloc( dir_ndesc_memchunk ) );
 	NODE_DESC(globals.fstree)->type = NODE_METANODE;
 	NODE_DESC(globals.fstree)->id = node_id++;
-	name = g_dirname( root_dir );
+	name = g_path_get_dirname( root_dir );
 	NODE_DESC(globals.fstree)->name = g_string_chunk_insert( name_strchunk, name );
 	g_free( name );
 	DIR_NODE_DESC(globals.fstree)->ctnode = NULL; /* needed in dirtree_entry_new( ) */
@@ -351,7 +352,7 @@ scanfs( const char *dir )
 	/* Note: We can now use root_dnode to refer to the node just
 	 * created (it is an alias for globals.fstree->children) */
 	NODE_DESC(root_dnode)->id = node_id++;
-	name = g_basename( root_dir );
+	name = (char *)g_basename( root_dir );
 	NODE_DESC(root_dnode)->name = g_string_chunk_insert( name_strchunk, name );
 	DIR_NODE_DESC(root_dnode)->a_dlist = NULL_DLIST;
 	DIR_NODE_DESC(root_dnode)->b_dlist = NULL_DLIST;
@@ -361,13 +362,13 @@ scanfs( const char *dir )
 
 	/* GUI stuff */
 	filelist_scan_monitor_init( );
-	handler_id = gtk_timeout_add( SCAN_MONITOR_PERIOD, (GtkFunction)scan_monitor, NULL );
+	handler_id = g_timeout_add( SCAN_MONITOR_PERIOD, (GSourceFunc)scan_monitor, NULL );
 
 	/* Let the disk thrashing begin */
 	process_dir( root_dir, root_dnode );
 
 	/* GUI stuff again */
-	gtk_timeout_remove( handler_id );
+	g_source_remove( handler_id );
 	window_statusbar( SB_RIGHT, "" );
 	dirtree_no_more_entries( );
 	gui_update( );
@@ -377,7 +378,7 @@ scanfs( const char *dir )
 	setup_fstree_recursive( globals.fstree, node_table );
 
 	/* Pass off new node table to the viewport handler */
-	viewport_pass_node_table( node_table );
+	viewport_pass_node_table( node_table, node_id );
 }
 
 

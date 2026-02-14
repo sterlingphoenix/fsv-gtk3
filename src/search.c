@@ -207,10 +207,10 @@ search_pass_widgets( GtkWidget *entry_w, GtkWidget *next_button_w )
 	search_entry_w = entry_w;
 	search_next_button_w = next_button_w;
 
-	gtk_signal_connect( GTK_OBJECT(search_entry_w), "activate",
-	                    GTK_SIGNAL_FUNC(search_execute_cb), NULL );
-	gtk_signal_connect( GTK_OBJECT(search_next_button_w), "clicked",
-	                    GTK_SIGNAL_FUNC(search_next_cb), NULL );
+	g_signal_connect( G_OBJECT(search_entry_w), "activate",
+	                    G_CALLBACK(search_execute_cb), NULL );
+	g_signal_connect( G_OBJECT(search_next_button_w), "clicked",
+	                    G_CALLBACK(search_next_cb), NULL );
 }
 
 

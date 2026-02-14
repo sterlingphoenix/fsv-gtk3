@@ -238,12 +238,12 @@ csdialog_time_edit_cb( GtkWidget *dateedit_w )
 	}
 
 	/* Reset old and new times */
-	gtk_signal_handler_block_by_func( GTK_OBJECT(csdialog.time.old_dateedit_w), csdialog_time_edit_cb, NULL );
-	gtk_signal_handler_block_by_func( GTK_OBJECT(csdialog.time.new_dateedit_w), csdialog_time_edit_cb, NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(csdialog.time.old_dateedit_w), csdialog_time_edit_cb, NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(csdialog.time.new_dateedit_w), csdialog_time_edit_cb, NULL );
 	gui_dateedit_set_time( csdialog.time.old_dateedit_w, old_time );
 	gui_dateedit_set_time( csdialog.time.new_dateedit_w, new_time );
-	gtk_signal_handler_unblock_by_func( GTK_OBJECT(csdialog.time.old_dateedit_w), csdialog_time_edit_cb, NULL );
-	gtk_signal_handler_unblock_by_func( GTK_OBJECT(csdialog.time.new_dateedit_w), csdialog_time_edit_cb, NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(csdialog.time.old_dateedit_w), csdialog_time_edit_cb, NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(csdialog.time.new_dateedit_w), csdialog_time_edit_cb, NULL );
 
 	csdialog.color_config.by_timestamp.old_time = old_time;
 	csdialog.color_config.by_timestamp.new_time = new_time;
@@ -637,9 +637,9 @@ csdialog_wpattern_clist_drag_cb( GtkWidget *unused1, GdkDragContext *unused2, in
 static void
 wplist_undo_illegal_row_move( int source_row, int dest_row )
 {
-	gtk_signal_handler_block_by_func( GTK_OBJECT(csdialog.wpattern.clist_w), GTK_SIGNAL_FUNC(csdialog_wpattern_clist_row_move_cb), NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(csdialog.wpattern.clist_w), G_CALLBACK(csdialog_wpattern_clist_row_move_cb), NULL );
 	gtk_clist_row_move( GTK_CLIST(csdialog.wpattern.clist_w), dest_row, source_row );
-	gtk_signal_handler_unblock_by_func( GTK_OBJECT(csdialog.wpattern.clist_w), GTK_SIGNAL_FUNC(csdialog_wpattern_clist_row_move_cb), NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(csdialog.wpattern.clist_w), G_CALLBACK(csdialog_wpattern_clist_row_move_cb), NULL );
 }
 
 
@@ -698,7 +698,7 @@ csdialog_wpattern_clist_row_move_cb( GtkWidget *clist_w, int source_row, int des
 		 * has just been updated, with the rows already where they
 		 * should be, the impending "real" row move must be
 		 * cancelled */
-		gtk_signal_emit_stop_by_name( GTK_OBJECT(clist_w), "row_move" );
+		gtk_signal_emit_stop_by_name( G_OBJECT(clist_w), "row_move" );
 		break;
 
 		case WPLIST_WPATTERN_ROW:
@@ -1068,11 +1068,11 @@ dialog_color_setup( void )
 	/* List of colors and associated wildcard patterns */
 	csdialog.wpattern.clist_w = gui_clist_add( hbox_w, 2, clist_col_titles );
 	gtk_clist_set_reorderable( GTK_CLIST(csdialog.wpattern.clist_w), TRUE );
-	gtk_signal_connect( GTK_OBJECT(csdialog.wpattern.clist_w), "button_release_event", GTK_SIGNAL_FUNC(csdialog_wpattern_clist_click_cb), NULL );
-	gtk_signal_connect( GTK_OBJECT(csdialog.wpattern.clist_w), "select_row", GTK_SIGNAL_FUNC(csdialog_wpattern_clist_select_unselect_cb), NULL );
-	gtk_signal_connect( GTK_OBJECT(csdialog.wpattern.clist_w), "unselect_row", GTK_SIGNAL_FUNC(csdialog_wpattern_clist_select_unselect_cb), NULL );
-	gtk_signal_connect( GTK_OBJECT(csdialog.wpattern.clist_w), "drag_motion", GTK_SIGNAL_FUNC(csdialog_wpattern_clist_drag_cb), NULL );
-	gtk_signal_connect( GTK_OBJECT(csdialog.wpattern.clist_w), "row_move", GTK_SIGNAL_FUNC(csdialog_wpattern_clist_row_move_cb), NULL );
+	g_signal_connect( G_OBJECT(csdialog.wpattern.clist_w), "button_release_event", G_CALLBACK(csdialog_wpattern_clist_click_cb), NULL );
+	g_signal_connect( G_OBJECT(csdialog.wpattern.clist_w), "select_row", G_CALLBACK(csdialog_wpattern_clist_select_unselect_cb), NULL );
+	g_signal_connect( G_OBJECT(csdialog.wpattern.clist_w), "unselect_row", G_CALLBACK(csdialog_wpattern_clist_select_unselect_cb), NULL );
+	g_signal_connect( G_OBJECT(csdialog.wpattern.clist_w), "drag_motion", G_CALLBACK(csdialog_wpattern_clist_drag_cb), NULL );
+	g_signal_connect( G_OBJECT(csdialog.wpattern.clist_w), "row_move", G_CALLBACK(csdialog_wpattern_clist_row_move_cb), NULL );
 
         /* Action buttons */
 	vbox_w = gui_vbox_add( hbox_w, 0 );
@@ -1102,7 +1102,7 @@ dialog_color_setup( void )
 	gtk_notebook_set_page( GTK_NOTEBOOK(csdialog.notebook_w), color_mode );
 
 	/* Some cleanup will be required once the window goes away */
-	gtk_signal_connect( GTK_OBJECT(window_w), "destroy", GTK_SIGNAL_FUNC(csdialog_destroy_cb), NULL );
+	g_signal_connect( G_OBJECT(window_w), "destroy", G_CALLBACK(csdialog_destroy_cb), NULL );
 
 	gtk_widget_show( window_w );
 }
@@ -1406,7 +1406,7 @@ dialog_node_properties( GNode *node )
 		button_w = gui_button_add( hbox_w, _("Look at target node"), look_at_target_node_cb, target_node );
 		gui_widget_packing( button_w, EXPAND, NO_FILL, AT_START );
 		gtk_widget_set_sensitive( button_w, target_node != NULL );
-		gtk_signal_connect( GTK_OBJECT(button_w), "clicked", GTK_SIGNAL_FUNC(close_cb), window_w );
+		g_signal_connect( G_OBJECT(button_w), "clicked", G_CALLBACK(close_cb), window_w );
 		break;
 
 

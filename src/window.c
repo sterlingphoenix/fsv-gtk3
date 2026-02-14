@@ -94,13 +94,12 @@ window_init( FsvMode fsv_mode )
 	/* Main window widget */
 	main_window_w = gtk_window_new( GTK_WINDOW_TOPLEVEL );
 	gtk_window_set_title( GTK_WINDOW(main_window_w), "fsv" );
-	gtk_window_set_wmclass( GTK_WINDOW(main_window_w), "main", "fsv" );
-	gtk_window_set_policy( GTK_WINDOW(main_window_w), TRUE, TRUE, TRUE );
-	window_width = 3 * gdk_screen_width( ) / 4;
+	/* wmclass is set automatically from g_set_prgname / application name */
+	gtk_window_set_resizable( GTK_WINDOW(main_window_w), TRUE );
+	window_width = 3 * gdk_screen_get_width( gdk_screen_get_default( ) ) / 4;
 	window_height = 2584 * window_width / 4181;
-	gtk_widget_set_usize( main_window_w, window_width, window_height );
-	gtk_signal_connect( GTK_OBJECT(main_window_w), "delete_event", GTK_SIGNAL_FUNC(gtk_main_quit), NULL );
-	gtk_quit_add_destroy( 1, GTK_OBJECT(main_window_w) );
+	gtk_window_set_default_size( GTK_WINDOW(main_window_w), window_width, window_height );
+	g_signal_connect( G_OBJECT(main_window_w), "delete_event", G_CALLBACK(gtk_main_quit), NULL );
 
 	/* Main vertical box widget */
 	main_vbox_w = gui_vbox_add( main_window_w, 0 );
@@ -118,9 +117,7 @@ window_init( FsvMode fsv_mode )
 	menu_item_w = gui_menu_item_add( menu_w, _("Change root..."), on_file_change_root_activate, NULL );
 	gui_keybind( menu_item_w, _("^N") );
 	G_LIST_APPEND(sw_widget_list, menu_item_w);
-#if 0
 	gui_menu_item_add( menu_w, _("Save settings"), on_file_save_settings_activate, NULL );
-#endif
 	gui_separator_add( menu_w );
 	menu_item_w = gui_menu_item_add( menu_w, _("Exit"), on_file_exit_activate, NULL );
 	gui_keybind( menu_item_w, _("^Q") );
@@ -128,11 +125,8 @@ window_init( FsvMode fsv_mode )
 	/* Vis menu */
 	menu_w = gui_menu_add( menu_bar_w, _("Vis") );
 	/* Vis menu items */
-	gui_radio_menu_begin( fsv_mode -1 );
-#if 0 /* DiscV mode needs more work */
+	gui_radio_menu_begin( fsv_mode );
 	gui_radio_menu_item_add( menu_w, _("DiscV"), on_vis_discv_activate, NULL );
-/* Note: don't forget to remove the "-1" three lines up */
-#endif
 	gui_radio_menu_item_add( menu_w, _("MapV"), on_vis_mapv_activate, NULL );
 	gui_radio_menu_item_add( menu_w, _("TreeV"), on_vis_treev_activate, NULL );
 
@@ -166,7 +160,7 @@ window_init( FsvMode fsv_mode )
 
 	/* Help menu (right-justified) */
 	menu_w = gui_menu_add( menu_bar_w, _("Help") );
-	gtk_menu_item_right_justify( GTK_MENU_ITEM(GTK_MENU(menu_w)->parent_menu_item) );
+	gtk_menu_item_set_right_justified( GTK_MENU_ITEM(GTK_MENU(menu_w)->parent_menu_item), TRUE );
 	/* Help menu items */
 	gui_menu_item_add( menu_w, _("Contents..."), on_help_contents_activate, NULL );
 	gui_separator_add( menu_w );
@@ -241,7 +235,7 @@ window_init( FsvMode fsv_mode )
 
 	/* Main viewport (OpenGL area widget) */
 	gl_area_w = gui_gl_area_add( hbox_w );
-	gtk_signal_connect( GTK_OBJECT(gl_area_w), "event", GTK_SIGNAL_FUNC(viewport_cb), NULL );
+	g_signal_connect( G_OBJECT(gl_area_w), "event", G_CALLBACK(viewport_cb), NULL );
 
 	/* y-scrollbar */
 	y_scrollbar_w = gui_vscrollbar_add( hbox_w, NULL );
@@ -294,30 +288,30 @@ void
 window_set_color_mode( ColorMode mode )
 {
 	GtkWidget *rmenu_item_w;
-	GtkSignalFunc handler;
+	GCallback handler;
 
 	switch (mode) {
 		case COLOR_BY_NODETYPE:
 		rmenu_item_w = color_by_nodetype_rmenu_item_w;
-		handler = GTK_SIGNAL_FUNC(on_color_by_nodetype_activate);
+		handler = G_CALLBACK(on_color_by_nodetype_activate);
 		break;
 
 		case COLOR_BY_TIMESTAMP:
 		rmenu_item_w = color_by_timestamp_rmenu_item_w;
-		handler = GTK_SIGNAL_FUNC(on_color_by_timestamp_activate);
+		handler = G_CALLBACK(on_color_by_timestamp_activate);
 		break;
 
 		case COLOR_BY_WPATTERN:
 		rmenu_item_w = color_by_wpattern_rmenu_item_w;
-		handler = GTK_SIGNAL_FUNC(on_color_by_wildcards_activate);
+		handler = G_CALLBACK(on_color_by_wildcards_activate);
 		break;
 
 		SWITCH_FAIL
 	}
 
-	gtk_signal_handler_block_by_func( GTK_OBJECT(rmenu_item_w), handler, NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(rmenu_item_w), handler, NULL );
 	gtk_check_menu_item_set_active( GTK_CHECK_MENU_ITEM(rmenu_item_w), TRUE );
-	gtk_signal_handler_unblock_by_func( GTK_OBJECT(rmenu_item_w), handler, NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(rmenu_item_w), handler, NULL );
 }
 
 
@@ -327,9 +321,9 @@ window_set_color_mode( ColorMode mode )
 void
 window_birdseye_view_off( void )
 {
-	gtk_signal_handler_block_by_func( GTK_OBJECT(birdseye_view_tbutton_w), GTK_SIGNAL_FUNC(on_birdseye_view_togglebutton_toggled), NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(birdseye_view_tbutton_w), G_CALLBACK(on_birdseye_view_togglebutton_toggled), NULL );
 	gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(birdseye_view_tbutton_w), FALSE );
-	gtk_signal_handler_unblock_by_func( GTK_OBJECT(birdseye_view_tbutton_w), GTK_SIGNAL_FUNC(on_birdseye_view_togglebutton_toggled), NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(birdseye_view_tbutton_w), G_CALLBACK(on_birdseye_view_togglebutton_toggled), NULL );
 }
 
 

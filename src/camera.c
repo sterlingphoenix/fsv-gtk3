@@ -237,13 +237,11 @@ discv_scrollbar_move( double value, int axis )
 {
 	switch (axis) {
 		case X_AXIS:
-		/* ????? */
-		value = value;
+		DISCV_CAMERA(camera)->target.x = value;
 		break;
 
 		case Y_AXIS:
-		/* ????? */
-		value = value;
+		DISCV_CAMERA(camera)->target.y = - value;
 		break;
 
 		SWITCH_FAIL
@@ -355,8 +353,8 @@ camera_pass_scrollbar_widgets( GtkWidget *x_scrollbar_w, GtkWidget *y_scrollbar_
 	y_scrollbar_adj = GTK_RANGE(y_scrollbar_w)->adjustment;
 
 	/* Connect signal handlers */
-	gtk_signal_connect( GTK_OBJECT(x_scrollbar_adj), "value_changed", GTK_SIGNAL_FUNC(camera_scrollbar_move_cb), x_axis_mesg );
-	gtk_signal_connect( GTK_OBJECT(y_scrollbar_adj), "value_changed", GTK_SIGNAL_FUNC(camera_scrollbar_move_cb), y_axis_mesg );
+	g_signal_connect( G_OBJECT(x_scrollbar_adj), "value_changed", G_CALLBACK(camera_scrollbar_move_cb), x_axis_mesg );
+	g_signal_connect( G_OBJECT(y_scrollbar_adj), "value_changed", G_CALLBACK(camera_scrollbar_move_cb), y_axis_mesg );
 }
 
 
@@ -379,11 +377,42 @@ null_get_scrollbar_states( GtkAdjustment *x_adj, GtkAdjustment *y_adj )
 static void
 discv_get_scrollbar_states( GtkAdjustment *x_adj, GtkAdjustment *y_adj )
 {
+	double radius;
+	double diameter;
+	double margin;
+	double cofs;
+	double lo, hi;
 
-	/* TODO: To be implemented... */
+	radius = DISCV_GEOM_PARAMS(root_dnode)->radius;
 
-	*x_adj = *x_scrollbar_adj; /* struct assign */
-	*y_adj = *y_scrollbar_adj; /* struct assign */
+	/* Diameter of camera's field of view (centered at target) */
+	diameter = field_diameter( camera->fov, camera->distance );
+
+	/* Margin is half of the visible area or half the disc, whichever is smaller */
+	margin = 0.5 * MIN(diameter, 2.0 * radius);
+
+	/* Scrollable range */
+	lo = - radius + margin;
+	hi = radius - margin;
+
+	/* Corrective offset (adj->value is the top of the slider, not center) */
+	cofs = 0.5 * diameter;
+
+	/* x-scrollbar state */
+	x_adj->lower = MIN(lo, DISCV_CAMERA(camera)->target.x) - cofs;
+	x_adj->upper = MAX(hi, DISCV_CAMERA(camera)->target.x) + cofs;
+	x_adj->value = DISCV_CAMERA(camera)->target.x - cofs;
+	x_adj->step_increment = 2.0 * radius / 256.0;
+	x_adj->page_increment = 2.0 * radius / 16.0;
+	x_adj->page_size = diameter;
+
+	/* y-scrollbar state (signs reversed for canonical scrollbar direction) */
+	y_adj->lower = MIN(- hi, - DISCV_CAMERA(camera)->target.y) - cofs;
+	y_adj->upper = MAX(- lo, - DISCV_CAMERA(camera)->target.y) + cofs;
+	y_adj->value = - DISCV_CAMERA(camera)->target.y - cofs;
+	y_adj->step_increment = 2.0 * radius / 256.0;
+	y_adj->page_increment = 2.0 * radius / 16.0;
+	y_adj->page_size = diameter;
 }
 
 
@@ -604,14 +633,14 @@ camera_update_scrollbars( boolean hard_update )
 
 	/* Update the scrollbar widgets */
 	if (hard_update || !gui_adjustment_widget_busy( x_scrollbar_adj )) {
-		gtk_signal_handler_block_by_func( GTK_OBJECT(x_scrollbar_adj), GTK_SIGNAL_FUNC(camera_scrollbar_move_cb), x_axis_mesg );
-		gtk_signal_emit_by_name( GTK_OBJECT(x_scrollbar_adj), "changed" );
-		gtk_signal_handler_unblock_by_func( GTK_OBJECT(x_scrollbar_adj), GTK_SIGNAL_FUNC(camera_scrollbar_move_cb), x_axis_mesg );
+		g_signal_handlers_block_by_func( G_OBJECT(x_scrollbar_adj), G_CALLBACK(camera_scrollbar_move_cb), x_axis_mesg );
+		g_signal_emit_by_name( G_OBJECT(x_scrollbar_adj), "changed" );
+		g_signal_handlers_unblock_by_func( G_OBJECT(x_scrollbar_adj), G_CALLBACK(camera_scrollbar_move_cb), x_axis_mesg );
 	}
 	if (hard_update || !gui_adjustment_widget_busy( y_scrollbar_adj )) {
-		gtk_signal_handler_block_by_func( GTK_OBJECT(y_scrollbar_adj), GTK_SIGNAL_FUNC(camera_scrollbar_move_cb), y_axis_mesg );
-		gtk_signal_emit_by_name( GTK_OBJECT(y_scrollbar_adj), "changed" );
-		gtk_signal_handler_unblock_by_func( GTK_OBJECT(y_scrollbar_adj), GTK_SIGNAL_FUNC(camera_scrollbar_move_cb), y_axis_mesg );
+		g_signal_handlers_block_by_func( G_OBJECT(y_scrollbar_adj), G_CALLBACK(camera_scrollbar_move_cb), y_axis_mesg );
+		g_signal_emit_by_name( G_OBJECT(y_scrollbar_adj), "changed" );
+		g_signal_handlers_unblock_by_func( G_OBJECT(y_scrollbar_adj), G_CALLBACK(camera_scrollbar_move_cb), y_axis_mesg );
 	}
 }
 

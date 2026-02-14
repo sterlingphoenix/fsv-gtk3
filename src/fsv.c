@@ -32,10 +32,11 @@
 #include "about.h"
 #include "animation.h"
 #include "camera.h"
-#include "color.h" /* color_init( ) */
+#include "color.h" /* color_init( ), color_write_config( ) */
 #include "filelist.h"
 #include "geometry.h"
 #include "gui.h" /* gui_update( ) */
+#include "nvstore.h"
 #include "ogl.h" /* ogl_gl_query( ) */
 #include "scanfs.h"
 #include "window.h"
@@ -54,6 +55,9 @@ enum {
 
 /* Initial visualization mode */
 static FsvMode initial_fsv_mode = FSV_MAPV;
+
+/* Token strings for config file */
+static const char *tokens_fsv_mode[] = { "discv", "mapv", "treev", NULL };
 
 /* Command-line options */
 static struct option cli_opts[] = {
@@ -195,18 +199,13 @@ fsv_load( const char *dir )
 void
 fsv_write_config( void )
 {
+	NVStore *fsvrc;
 
-/* #warning write fsv_write_config( ) */
-#if 0
-	/* Clean out old configuration information */
-	gnome_config_push_prefix( config_path_prefix( NULL ) );
-	gnome_config_clean_section( section_fsv );
-	gnome_config_pop_prefix( );
+	fsvrc = nvs_open( CONFIG_FILE );
+	nvs_write_int_token( fsvrc, "/fsv/mode", globals.fsv_mode, tokens_fsv_mode );
+	nvs_close( fsvrc );
 
-	gnome_config_push_prefix( config_path_prefix( section_fsv ) );
-	gnome_config_set_token( key_fsv_mode, globals.fsv_mode, tokens_fsv_mode );
-	gnome_config_pop_prefix( );
-#endif /* 0 */
+	color_write_config( );
 }
 
 
@@ -234,6 +233,14 @@ main( int argc, char **argv )
 	bindtextdomain( PACKAGE, LOCALEDIR );
 	textdomain( PACKAGE );
 #endif
+
+	/* Read saved visualization mode from config (CLI options override) */
+	{
+		NVStore *fsvrc = nvs_open( CONFIG_FILE );
+		int mode = nvs_read_int_token_default( fsvrc, "/fsv/mode", tokens_fsv_mode, FSV_MAPV );
+		initial_fsv_mode = (FsvMode)mode;
+		nvs_close( fsvrc );
+	}
 
 	/* Parse command-line options */
 	for (;;) {

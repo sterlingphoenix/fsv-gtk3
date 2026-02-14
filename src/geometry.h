@@ -101,6 +101,7 @@ void geometry_queue_rebuild( GNode *dnode );
 void geometry_init( FsvMode mode );
 void geometry_gldraw_fsv( void );
 void geometry_draw( boolean high_detail );
+void geometry_draw_for_pick( void );
 void geometry_camera_pan_finished( void );
 void geometry_colexp_initiated( GNode *dnode );
 void geometry_colexp_in_progress( GNode *dnode );

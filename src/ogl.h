@@ -27,13 +27,12 @@
 #define FSV_OGL_H
 
 
+void ogl_make_current( void );
 void ogl_resize( void );
 void ogl_refresh( void );
 double ogl_aspect_ratio( void );
 void ogl_draw( void );
-#ifdef GL_NO_ERROR
-int ogl_select( int x, int y, const GLuint **selectbuf_ptr );
-#endif
+unsigned int ogl_color_pick( int x, int y, unsigned int *face_id );
 #ifdef __GTK_H__
 GtkWidget *ogl_widget_new( void );
 gboolean ogl_gl_query( void );

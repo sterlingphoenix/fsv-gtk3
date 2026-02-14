@@ -25,7 +25,6 @@
 #include "viewport.h"
 
 #include <gtk/gtk.h>
-#include <GL/gl.h> /* GLuint */
 
 #include "about.h"
 #include "camera.h"
@@ -43,6 +42,7 @@
 
 /* The node table, used to find a node by its ID number */
 static GNode **node_table = NULL;
+static unsigned int node_table_size = 0;
 
 /* The currently highlighted (indicated) node */
 static GNode *indicated_node = NULL;
@@ -59,56 +59,29 @@ static int btn1_press_x = 0, btn1_press_y = 0;
 
 /* Receives a newly created node table from scanfs( ) */
 void
-viewport_pass_node_table( GNode **new_node_table )
+viewport_pass_node_table( GNode **new_node_table, unsigned int table_size )
 {
 	if (node_table != NULL)
 		xfree( node_table );
 
 	node_table = new_node_table;
+	node_table_size = table_size;
 }
 
 
 /* This returns the node (if any) that is visible at viewport location
  * (x,y) (where (0,0) indicates the upper-left corner). The ID number of
- * the particular face being pointed at is stored in face_id */
+ * the particular face being pointed at is stored in face_id.
+ * Uses color-buffer picking: renders scene with node IDs as colors,
+ * reads back the pixel to determine the node. */
 static GNode *
 node_at_location( int x, int y, unsigned int *face_id )
 {
-	const GLuint *hit_records;
-	unsigned int name_count, z1, z2, name1, name2;
-	unsigned int min_z1;
-	unsigned int node_id = 0;
-	int hit_count;
-	int i = 0;
+	unsigned int node_id;
 
-	*face_id = 0;
-
-	hit_count = ogl_select( x, y, &hit_records );
-	if (hit_count > 0) {
-		/* Process selection hit records: find nearest hit
-		 * (i.e. hit with smallest window-coordinate z value) */
-		min_z1 = 4294967295U; /* 2^32 - 1 */
-		while (hit_count > 0) {
-			name_count = hit_records[i++];
-			z1 = hit_records[i++];
-			z2 = hit_records[i++];
-			name1 = hit_records[i++];
-			if (name_count == 2)
-				name2 = hit_records[i++];
-			else
-				name2 = 0; /* default */
-			if (z1 < min_z1) {
-				node_id = name1;
-				*face_id = name2;
-				min_z1 = z1;
-			}
-			z2 = z2; /* z2 not used */
-			--hit_count;
-		}
-
-		if (node_id != 0)
-			return node_table[node_id];
-	}
+	node_id = ogl_color_pick( x, y, face_id );
+	if (node_id != 0 && node_id < node_table_size)
+		return node_table[node_id];
 
 	return NULL;
 }
@@ -130,10 +103,11 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 	/* Handle low-level GL area widget events */
 	switch (event->type) {
 		case GDK_EXPOSE:
-		ogl_refresh( );
+		/* Handled by ogl.c expose_cb which renders directly */
 		return FALSE;
 
 		case GDK_CONFIGURE:
+		ogl_make_current( );
 		ogl_resize( );
 		return FALSE;
 

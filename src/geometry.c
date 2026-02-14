@@ -42,9 +42,29 @@
  * (input and output are both [0, 1]) */
 #define CURSOR_POS(x)			sin( (0.5 * PI) * (x) )
 
-/* Use this to set the current GL color for a node */
-#define node_glcolor( node ) \
-	glColor3fv( (const float *)NODE_DESC(node)->color )
+/* Color-buffer picking mode flag */
+static boolean picking_mode = FALSE;
+
+/* Use this to set the current GL color for a node.
+ * In picking mode, encode the node ID as an RGB color. */
+#define node_glcolor( node ) do { \
+	if (picking_mode) { \
+		unsigned int _nid = NODE_DESC(node)->id; \
+		glColor4ub( (_nid >> 16) & 0xFF, (_nid >> 8) & 0xFF, _nid & 0xFF, 0 ); \
+	} else { \
+		glColor3fv( (const float *)NODE_DESC(node)->color ); \
+	} \
+} while(0)
+
+/* Set the pick color with a face flag (used for top-face detection) */
+#define node_glcolor_face( node, face ) do { \
+	if (picking_mode) { \
+		unsigned int _nid = NODE_DESC(node)->id; \
+		glColor4ub( (_nid >> 16) & 0xFF, (_nid >> 8) & 0xFF, _nid & 0xFF, (face) ); \
+	} else { \
+		glColor3fv( (const float *)NODE_DESC(node)->color ); \
+	} \
+} while(0)
 
 
 /* Low- and high-detail geometry display lists */
@@ -68,6 +88,7 @@ static void cursor_hidden_part( void );
 static void cursor_visible_part( void );
 static void cursor_post( void );
 static void queue_uncached_draw( void );
+static void discv_draw_cursor( double pos );
 
 
 /**** DISC VISUALIZATION **************************************/
@@ -237,6 +258,11 @@ discv_init_recursive( GNode *dnode, double stem_theta )
 }
 
 
+/* Previous cursor position (for interpolation during camera pan) */
+static XYvec discv_cursor_prev_pos;
+static double discv_cursor_prev_radius;
+
+
 static void
 discv_init( void )
 {
@@ -250,6 +276,11 @@ discv_init( void )
 
 	gparams->pos.x = 0.0;
 	gparams->pos.y = - DISCV_GEOM_PARAMS(root_dnode)->radius;
+
+	/* Initialize cursor to root position */
+	discv_cursor_prev_pos.x = 0.0;
+	discv_cursor_prev_pos.y = 0.0;
+	discv_cursor_prev_radius = 2.0 * DISCV_GEOM_PARAMS(root_dnode)->radius;
 
 	/* DiscV mode is entirely 2D */
 	glNormal3d( 0.0, 0.0, 1.0 );
@@ -287,10 +318,38 @@ discv_gldraw_node( GNode *node, double dir_deployment )
 static void
 discv_gldraw_folder( GNode *node )
 {
-	node = node;
+	DiscVGeomParams *gparams;
+	XYvec center;
+	double r, border;
+	XYvec folder_c0, folder_c1, folder_tab;
 
-	/* To be written... */
+	gparams = DISCV_GEOM_PARAMS(node);
 
+	center.x = gparams->pos.x;
+	center.y = gparams->pos.y;
+	r = gparams->radius;
+
+	/* Draw a folder icon outline centered on the disc */
+	border = 0.0625 * r;
+	folder_c0.x = center.x - 0.6 * r;
+	folder_c0.y = center.y - 0.4 * r;
+	folder_c1.x = center.x + 0.6 * r;
+	folder_c1.y = center.y + 0.4 * r;
+	/* Coordinates of the concave vertex (folder tab) */
+	folder_tab.x = folder_c1.x - (MAGIC_NUMBER - 1.0) * (folder_c1.x - folder_c0.x);
+	folder_tab.y = folder_c1.y - border;
+
+	node_glcolor( node );
+	glBegin( GL_LINE_STRIP );
+	glVertex2d( folder_c0.x, folder_c0.y );
+	glVertex2d( folder_c0.x, folder_tab.y );
+	glVertex2d( folder_c0.x + border, folder_c1.y );
+	glVertex2d( folder_tab.x - border, folder_c1.y );
+	glVertex2d( folder_tab.x, folder_tab.y );
+	glVertex2d( folder_c1.x, folder_tab.y );
+	glVertex2d( folder_c1.x, folder_c0.y );
+	glVertex2d( folder_c0.x, folder_c0.y );
+	glEnd( );
 }
 
 
@@ -319,8 +378,24 @@ discv_build_dir( GNode *dnode )
 static void
 discv_apply_label( GNode *node )
 {
-	node = node;
+	DiscVGeomParams *gparams;
+	XYZvec label_pos;
+	XYvec label_dims;
+	double r;
 
+	gparams = DISCV_GEOM_PARAMS(node);
+	r = gparams->radius;
+
+	/* Position label at center of disc */
+	label_pos.x = gparams->pos.x;
+	label_pos.y = gparams->pos.y;
+	label_pos.z = 0.0;
+
+	/* Label dimensions proportional to disc radius */
+	label_dims.x = 1.5 * r;
+	label_dims.y = (2.0 - MAGIC_NUMBER) * r;
+
+	text_draw_straight( NODE_DESC(node)->name, &label_pos, &label_dims );
 }
 
 
@@ -347,7 +422,12 @@ discv_draw_recursive( GNode *dnode, int action )
 
 	if (action == DISCV_DRAW_GEOMETRY) {
 		/* Draw folder or leaf nodes (display list A) */
-		if (dir_ndesc->a_dlist_stale) {
+		if (picking_mode) {
+			/* Pick mode: draw directly, bypass display lists */
+			if (!dir_collapsed)
+				discv_build_dir( dnode );
+		}
+		else if (dir_ndesc->a_dlist_stale) {
 			/* Rebuild */
 			if (dir_ndesc->a_dlist == NULL_DLIST)
 				dir_ndesc->a_dlist = glGenLists( 1 );
@@ -445,7 +525,7 @@ discv_draw( boolean high_detail )
 			++fstree_high_draw_stage;
 
 		/* Node cursor */
-		/* draw_cursor( ); */
+		discv_draw_cursor( CURSOR_POS(camera->pan_part) );
 	}
 
 	glLineWidth( 1.0 );
@@ -455,19 +535,89 @@ discv_draw( boolean high_detail )
 static void
 discv_gldraw_cursor( XYvec pos, double radius )
 {
-	pos.x = pos.x;
-	radius = radius;
+	static const int seg_count = (int)(360.0 / DISCV_CURVE_GRANULARITY + 0.999);
+	double theta;
+	int i, s;
 
+	cursor_pre( );
+	for (i = 0; i < 2; i++) {
+		if (i == 0)
+			cursor_hidden_part( );
+		else
+			cursor_visible_part( );
+
+		glBegin( GL_LINE_LOOP );
+		for (s = 0; s < seg_count; s++) {
+			theta = (double)s / (double)seg_count * 360.0;
+			glVertex2d( pos.x + radius * cos( RAD(theta) ),
+			            pos.y + radius * sin( RAD(theta) ) );
+		}
+		glEnd( );
+	}
+	cursor_post( );
 }
 
 
 static void
 discv_draw_cursor_between( GNode *a_node, GNode *b_node, double k )
 {
-	a_node = a_node;
-	b_node = b_node;
-	k = k;
+	XYvec *a_pos, *b_pos;
+	XYvec cursor_pos;
+	double a_radius, b_radius, cursor_radius;
 
+	a_pos = geometry_discv_node_pos( a_node );
+	cursor_pos.x = a_pos->x;
+	cursor_pos.y = a_pos->y;
+	a_radius = DISCV_GEOM_PARAMS(a_node)->radius;
+
+	b_pos = geometry_discv_node_pos( b_node );
+	b_radius = DISCV_GEOM_PARAMS(b_node)->radius;
+
+	cursor_pos.x = INTERPOLATE(k, cursor_pos.x, b_pos->x);
+	cursor_pos.y = INTERPOLATE(k, cursor_pos.y, b_pos->y);
+	cursor_radius = INTERPOLATE(k, a_radius, b_radius);
+
+	/* Slight margin around the disc */
+	cursor_radius *= 1.0625;
+
+	discv_gldraw_cursor( cursor_pos, cursor_radius );
+}
+
+
+/* Draws the node cursor in an intermediate position between its previous
+ * steady-state position and the current node */
+static void
+discv_draw_cursor( double pos )
+{
+	XYvec *node_pos;
+	XYvec cursor_pos;
+	double node_radius, cursor_radius;
+
+	node_pos = geometry_discv_node_pos( globals.current_node );
+	node_radius = DISCV_GEOM_PARAMS(globals.current_node)->radius;
+
+	/* Interpolate position and radius */
+	cursor_pos.x = INTERPOLATE(pos, discv_cursor_prev_pos.x, node_pos->x);
+	cursor_pos.y = INTERPOLATE(pos, discv_cursor_prev_pos.y, node_pos->y);
+	cursor_radius = INTERPOLATE(pos, discv_cursor_prev_radius, node_radius);
+
+	/* Slight margin around the disc */
+	cursor_radius *= 1.0625;
+
+	discv_gldraw_cursor( cursor_pos, cursor_radius );
+}
+
+
+/* Saves cursor position after a camera pan completes */
+static void
+discv_camera_pan_finished( void )
+{
+	XYvec *node_pos;
+
+	node_pos = geometry_discv_node_pos( globals.current_node );
+	discv_cursor_prev_pos.x = node_pos->x;
+	discv_cursor_prev_pos.y = node_pos->y;
+	discv_cursor_prev_radius = DISCV_GEOM_PARAMS(globals.current_node)->radius;
 }
 
 
@@ -855,6 +1005,7 @@ mapv_gldraw_node( GNode *node )
 
 	/* Top face has ID of 1 */
 	glPushName( 1 );
+	node_glcolor_face( node, 1 );
 
 	/* Draw top face */
 	glNormal3d( 0.0, 0.0, 1.0 );
@@ -995,7 +1146,14 @@ mapv_draw_recursive( GNode *dnode, int action )
 	if (action == MAPV_DRAW_GEOMETRY) {
 		/* Draw directory face or geometry of children
 		 * (display list A) */
-		if (dir_ndesc->a_dlist_stale) {
+		if (picking_mode) {
+			/* Pick mode: draw directly, bypass display lists.
+			 * Collapsed dirs are pickable via their parent's
+			 * build_dir, so only expanded dirs need drawing. */
+			if (!dir_collapsed)
+				mapv_build_dir( dnode );
+		}
+		else if (dir_ndesc->a_dlist_stale) {
 			/* Rebuild */
 			if (dir_ndesc->a_dlist == NULL_DLIST)
 				dir_ndesc->a_dlist = glGenLists( 1 );
@@ -1864,6 +2022,7 @@ treev_gldraw_platform( GNode *dnode, double r0 )
 	glEnd( );
 	/* Top face has ID of 1 */
 	glPushName( 1 );
+	node_glcolor_face( dnode, 1 );
 	glBegin( GL_QUADS );
 
 	/* Draw top face */
@@ -2343,7 +2502,18 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action )
 	if (action >= TREEV_DRAW_GEOMETRY) {
 		/* Draw directory, in either leaf or platform form
 		 * (display list A) */
-		if (dir_ndesc->a_dlist_stale) {
+		if (picking_mode) {
+			/* Pick mode: draw directly, bypass display lists */
+			if (dir_collapsed) {
+				glLoadName( NODE_DESC(dnode)->id );
+				node_glcolor( dnode );
+				treev_gldraw_leaf( dnode, prev_r0, TRUE );
+			}
+			else if (NODE_IS_DIR(dnode)) {
+				treev_build_dir( dnode, r0 );
+			}
+		}
+		else if (dir_ndesc->a_dlist_stale) {
 			/* Rebuild */
 			if (dir_ndesc->a_dlist == NULL_DLIST)
 				dir_ndesc->a_dlist = glGenLists( 1 );
@@ -2385,7 +2555,7 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action )
 		}
 	}
 
-	if (dir_expanded && (action == TREEV_DRAW_GEOMETRY_WITH_BRANCHES)) {
+	if (dir_expanded && (action == TREEV_DRAW_GEOMETRY_WITH_BRANCHES) && !picking_mode) {
 		/* Draw interconnecting branches (display list B) */
 		if (dir_ndesc->b_dlist_stale) {
 			/* Rebuild */
@@ -2883,6 +3053,50 @@ splash_draw( void )
 }
 
 
+/* Draw geometry in color-picking mode (node IDs encoded as colors).
+ * Display list caching must be bypassed since pick colors differ
+ * from normal colors. We save/restore the draw stages so normal
+ * rendering is unaffected. */
+void
+geometry_draw_for_pick( void )
+{
+	int save_low_stage = fstree_low_draw_stage;
+	int save_high_stage = fstree_high_draw_stage;
+
+	picking_mode = TRUE;
+
+	/* Force uncached draw (stage 0 = full recursive, no caching) */
+	fstree_low_draw_stage = 0;
+	fstree_high_draw_stage = 0;
+
+	glInitNames( );
+	glPushName( 0 );
+
+	switch (globals.fsv_mode) {
+		case FSV_DISCV:
+		discv_draw( FALSE );
+		break;
+
+		case FSV_MAPV:
+		mapv_draw( FALSE );
+		break;
+
+		case FSV_TREEV:
+		treev_draw( FALSE );
+		break;
+
+		default:
+		break;
+	}
+
+	/* Restore draw stages so normal rendering continues to use caches */
+	fstree_low_draw_stage = save_low_stage;
+	fstree_high_draw_stage = save_high_stage;
+
+	picking_mode = FALSE;
+}
+
+
 /* Top-level call to draw viewport content */
 void
 geometry_draw( boolean high_detail )
@@ -2926,7 +3140,7 @@ geometry_camera_pan_finished( void )
 {
 	switch (globals.fsv_mode) {
 		case FSV_DISCV:
-		/* discv_camera_pan_finished( ); */
+		discv_camera_pan_finished( );
 		break;
 
 		case FSV_MAPV:
@@ -3010,7 +3224,14 @@ draw_node( GNode *node )
 
 	switch (globals.fsv_mode) {
 		case FSV_DISCV:
-		/* TODO: code to draw single discv node goes HERE */
+		{
+			XYvec *abs_pos;
+			abs_pos = geometry_discv_node_pos( node );
+			/* Translate to absolute position, draw disc at origin */
+			glTranslated( abs_pos->x - DISCV_GEOM_PARAMS(node)->pos.x,
+			              abs_pos->y - DISCV_GEOM_PARAMS(node)->pos.y, 0.0 );
+			discv_gldraw_node( node, 1.0 );
+		}
 		break;
 
 		case FSV_MAPV:
@@ -3085,7 +3306,7 @@ geometry_highlight_node( GNode *node, boolean strong )
 
 			glReadBuffer( GL_BACK );
 			glDrawBuffer( GL_FRONT );
-			glCopyPixels( prev_vp_x1, prev_vp_y1, prev_vp_x2, prev_vp_y2, GL_COLOR );
+			glCopyPixels( prev_vp_x1, prev_vp_y1, prev_vp_x2 - prev_vp_x1, prev_vp_y2 - prev_vp_y1, GL_COLOR );
 			glDrawBuffer( GL_BACK );
 
 			glMatrixMode( GL_PROJECTION );
@@ -3161,7 +3382,8 @@ geometry_highlight_node( GNode *node, boolean strong )
 		glGetDoublev( GL_MODELVIEW_MATRIX, prev_mview_matrix );
 
 		glReadBuffer( GL_FRONT );
-		glCopyPixels( vp_x1, vp_y1, vp_x2, vp_y2, GL_COLOR );
+		glCopyPixels( vp_x1, vp_y1, vp_x2 - vp_x1, vp_y2 - vp_y1, GL_COLOR );
+		glReadBuffer( GL_BACK );
 
 		prev_vp_x1 = vp_x1;
 		prev_vp_y1 = vp_y1;

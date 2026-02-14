@@ -55,6 +55,15 @@ gl_area_make_current( GtkWidget *widget )
 }
 
 
+/* Ensures the GL context is current (public interface) */
+void
+ogl_make_current( void )
+{
+	if (viewport_gl_area_w != NULL && glx_context != NULL)
+		gl_area_make_current( viewport_gl_area_w );
+}
+
+
 /* Swap buffers for the GL widget */
 static void
 gl_area_swap_buffers( GtkWidget *widget )
@@ -239,41 +248,79 @@ ogl_draw( void )
 }
 
 
-/* This returns an array of names (unsigned ints) of the primitives which
- * occur under the given viewport coordinates (x,y) (where (0,0) indicates
- * the upper left corner). Return value is the number of names (hit records)
- * stored in the select buffer */
-int
-ogl_select( int x, int y, const GLuint **selectbuf_ptr )
+/* Color-buffer picking: renders the scene with node IDs encoded as colors,
+ * then reads the pixel at (x,y) to determine which node is there.
+ * Returns the node ID (0 = no hit). face_id is set from the alpha channel. */
+unsigned int
+ogl_color_pick( int x, int y, unsigned int *face_id )
 {
-	static GLuint selectbuf[1024];
 	GLint viewport[4];
-	int ogl_y, hit_count;
+	unsigned char pixel[4] = { 0, 0, 0, 0 };
+	unsigned int node_id;
+	float save_clear_color[4];
 
-	glSelectBuffer( 1024, selectbuf );
-	glRenderMode( GL_SELECT );
+	/* Ensure GL context is current */
+	ogl_make_current( );
 
-	/* Set up picking matrix */
-	glGetIntegerv( GL_VIEWPORT, viewport );
-	glMatrixMode( GL_PROJECTION );
-	glLoadIdentity( );
-	ogl_y = viewport[3] - y;
-	gluPickMatrix( (double)x, (double)ogl_y, 1.0, 1.0, viewport );
+	/* Save GL state */
+	glGetFloatv( GL_COLOR_CLEAR_VALUE, save_clear_color );
+	GLboolean save_lighting = glIsEnabled( GL_LIGHTING );
+	GLboolean save_texture = glIsEnabled( GL_TEXTURE_2D );
+	GLboolean save_blend = glIsEnabled( GL_BLEND );
+	GLboolean save_dither = glIsEnabled( GL_DITHER );
+	GLboolean save_fog = glIsEnabled( GL_FOG );
+	GLboolean save_alpha_test = glIsEnabled( GL_ALPHA_TEST );
 
-	/* Draw geometry */
-	setup_projection_matrix( FALSE );
-	setup_modelview_matrix( );
-	geometry_draw( FALSE );
+	/* Set up for color picking */
+	glDisable( GL_LIGHTING );
+	glDisable( GL_TEXTURE_2D );
+	glDisable( GL_BLEND );
+	glDisable( GL_DITHER );
+	glDisable( GL_FOG );
+	glDisable( GL_ALPHA_TEST );
+	glShadeModel( GL_FLAT );
 
-	/* Get the hits */
-	hit_count = glRenderMode( GL_RENDER );
-	*selectbuf_ptr = selectbuf;
+	/* Clear to black (node ID 0 = no hit) */
+	glClearColor( 0.0, 0.0, 0.0, 0.0 );
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-	/* Leave matrices in a usable state */
+	/* Set up matrices and draw in pick mode */
 	setup_projection_matrix( TRUE );
 	setup_modelview_matrix( );
+	geometry_draw_for_pick( );
 
-	return hit_count;
+	/* Read the pixel at (x, y) from back buffer.
+	 * Note: glReadBuffer must be explicitly set because
+	 * geometry_highlight_node() may leave it set to GL_FRONT. */
+	glReadBuffer( GL_BACK );
+	glGetIntegerv( GL_VIEWPORT, viewport );
+	glReadPixels( x, viewport[3] - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel );
+
+	/* Decode node ID from RGB, face ID from alpha */
+	node_id = ((unsigned int)pixel[0] << 16) |
+	          ((unsigned int)pixel[1] << 8) |
+	          (unsigned int)pixel[2];
+	*face_id = (unsigned int)pixel[3];
+
+	/* Restore GL state */
+	glClearColor( save_clear_color[0], save_clear_color[1],
+	              save_clear_color[2], save_clear_color[3] );
+	if (save_lighting) glEnable( GL_LIGHTING );
+	if (save_texture) glEnable( GL_TEXTURE_2D );
+	if (save_blend) glEnable( GL_BLEND );
+	if (save_dither) glEnable( GL_DITHER );
+	if (save_fog) glEnable( GL_FOG );
+	if (save_alpha_test) glEnable( GL_ALPHA_TEST );
+	glShadeModel( GL_FLAT );
+
+	/* Re-render normal scene to back buffer so that
+	 * geometry_highlight_node() can safely copy from it */
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	setup_projection_matrix( TRUE );
+	setup_modelview_matrix( );
+	geometry_draw( TRUE );
+
+	return node_id;
 }
 
 
@@ -322,6 +369,11 @@ realize_cb( GtkWidget *widget, gpointer user_data )
 	/* Make context current and initialize OpenGL */
 	glXMakeCurrent( xdisplay, xwindow, glx_context );
 	ogl_init( );
+
+	/* Prevent GDK from clearing the GL widget's background on expose.
+	 * Without this, GDK erases the window before our idle-callback
+	 * renderer can swap in the GL content, causing a blank display. */
+	gdk_window_set_back_pixmap( gdk_win, NULL, FALSE );
 }
 
 
@@ -347,7 +399,7 @@ expose_cb( GtkWidget *widget, GdkEventExpose *event, gpointer user_data )
 		return FALSE;
 
 	gl_area_make_current( widget );
-	ogl_refresh( );
+	ogl_draw( );
 
 	return TRUE;
 }

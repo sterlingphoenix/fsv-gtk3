@@ -57,11 +57,7 @@ on_file_change_root_activate( GtkMenuItem *menuitem, gpointer user_data )
 void
 on_file_save_settings_activate( GtkMenuItem *menuitem, gpointer user_data )
 {
-	g_message( "Configuration file not yet implemented" );
-#if 0
 	fsv_write_config( );
-	color_write_config( );
-#endif
 }
 
 
@@ -70,6 +66,16 @@ void
 on_file_exit_activate( GtkMenuItem *menuitem, gpointer user_data )
 {
 	exit( EXIT_SUCCESS );
+}
+
+
+/* Vis -> DiscV */
+void
+on_vis_discv_activate( GtkMenuItem *menuitem, gpointer user_data )
+{
+	IGNORE_MENU_ITEM_DESELECT(menuitem);
+	if (globals.fsv_mode != FSV_DISCV)
+		fsv_set_mode( FSV_DISCV );
 }
 
 

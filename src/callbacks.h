@@ -18,6 +18,10 @@ on_file_exit_activate                  (GtkMenuItem     *menuitem,
                                         gpointer         user_data);
 
 void
+on_vis_discv_activate                  (GtkMenuItem     *menuitem,
+                                        gpointer         user_data);
+
+void
 on_vis_mapv_activate                   (GtkMenuItem     *menuitem,
                                         gpointer         user_data);
 
