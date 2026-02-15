@@ -44,23 +44,67 @@
 /* Time for the directory tree to scroll to a given entry (in seconds) */
 #define DIRTREE_SCROLL_TIME 0.5
 
+/* Column indices in the TreeStore (must match gui.c CTREE_COL_* enum) */
+enum {
+	COL_PIXBUF = 0,
+	COL_NAME   = 1,
+	COL_DATA   = 2
+};
 
-/* The directory tree widget */
-static GtkWidget *dir_ctree_w;
 
-/* Mini collapsed/expanded directory icons */
+/* The directory tree widget (GtkTreeView) */
+static GtkWidget *dir_tree_w;
+
+/* Mini collapsed/expanded directory icons (GdkPixbuf) */
 static Icon dir_colexp_mini_icons[2];
 
 /* Current directory */
 static GNode *dirtree_current_dnode;
 
 
+/* Helper: get the TreeStore model from the tree view */
+static GtkTreeStore *
+get_tree_store( void )
+{
+	return GTK_TREE_STORE(gtk_tree_view_get_model( GTK_TREE_VIEW(dir_tree_w) ));
+}
+
+
+/* Helper: get GNode from a tree path */
+static GNode *
+dnode_from_path( GtkTreePath *path )
+{
+	GtkTreeStore *store = get_tree_store( );
+	GtkTreeIter iter;
+	GNode *dnode = NULL;
+
+	if (gtk_tree_model_get_iter( GTK_TREE_MODEL(store), &iter, path ))
+		gtk_tree_model_get( GTK_TREE_MODEL(store), &iter, COL_DATA, &dnode, -1 );
+
+	return dnode;
+}
+
+
+/* Helper: get GNode from a tree iter */
+static GNode *
+dnode_from_iter( GtkTreeIter *iter )
+{
+	GtkTreeStore *store = get_tree_store( );
+	GNode *dnode = NULL;
+
+	gtk_tree_model_get( GTK_TREE_MODEL(store), iter, COL_DATA, &dnode, -1 );
+	return dnode;
+}
+
+
 /* Callback for button press in the directory tree area */
 static int
-dirtree_select_cb( GtkWidget *ctree_w, GdkEventButton *ev_button )
+dirtree_select_cb( GtkWidget *tree_w, GdkEventButton *ev_button )
 {
 	GNode *dnode;
-	int row;
+	GtkTreePath *path;
+	GtkTreeViewColumn *column;
+	GtkTreeSelection *sel;
 
 	/* If About presentation is up, end it */
 	about( ABOUT_END );
@@ -68,32 +112,36 @@ dirtree_select_cb( GtkWidget *ctree_w, GdkEventButton *ev_button )
 	if (globals.fsv_mode == FSV_SPLASH)
 		return FALSE;
 
-	gtk_clist_get_selection_info( GTK_CLIST(ctree_w), ev_button->x, ev_button->y, &row, NULL );
-	if (row < 0)
+	/* Find which row was clicked */
+	if (!gtk_tree_view_get_path_at_pos( GTK_TREE_VIEW(tree_w),
+			(int)ev_button->x, (int)ev_button->y,
+			&path, &column, NULL, NULL ))
 		return FALSE;
 
-	dnode = (GNode *)gtk_clist_get_row_data( GTK_CLIST(ctree_w), row );
-	if (dnode == NULL)
+	dnode = dnode_from_path( path );
+	if (dnode == NULL) {
+		gtk_tree_path_free( path );
 		return FALSE;
+	}
 
 	/* A single-click from button 1 highlights the node, shows the
-	 * name, and updates the file list if necessary. (and also selects
-	 * the row, but GTK+ does that automatically for us) */
+	 * name, and updates the file list if necessary */
 	if ((ev_button->button == 1) && (ev_button->type == GDK_BUTTON_PRESS)) {
 		geometry_highlight_node( dnode, FALSE );
 		window_statusbar( SB_RIGHT, node_absname( dnode ) );
 		if (dnode != dirtree_current_dnode)
 			filelist_populate( dnode );
 		dirtree_current_dnode = dnode;
+		gtk_tree_path_free( path );
 		return FALSE;
 	}
 
 	/* A double-click from button 1 gets the camera moving */
 	if ((ev_button->button == 1) && (ev_button->type == GDK_2BUTTON_PRESS)) {
 		camera_look_at( dnode );
-		/* Preempt the forthcoming tree expand/collapse
-		 * (the standard action spawned by a double-click) */
-		gtk_signal_emit_stop_by_name( G_OBJECT(ctree_w), "button_press_event" );
+		/* Preempt the forthcoming tree expand/collapse */
+		g_signal_stop_emission_by_name( G_OBJECT(tree_w), "button_press_event" );
+		gtk_tree_path_free( path );
 		return TRUE;
 	}
 
@@ -101,44 +149,63 @@ dirtree_select_cb( GtkWidget *ctree_w, GdkEventButton *ev_button )
 	 * shows the name, updates the file list if necessary, and brings
 	 * up a context-sensitive menu */
 	if (ev_button->button == 3) {
-		gtk_clist_select_row( GTK_CLIST(ctree_w), row, 0 );
+		sel = gtk_tree_view_get_selection( GTK_TREE_VIEW(tree_w) );
+		gtk_tree_selection_select_path( sel, path );
 		geometry_highlight_node( dnode, FALSE );
 		window_statusbar( SB_RIGHT, node_absname( dnode ) );
 		if (dnode != dirtree_current_dnode)
 			filelist_populate( dnode );
 		dirtree_current_dnode = dnode;
 		context_menu( dnode, ev_button );
+		gtk_tree_path_free( path );
 		return FALSE;
 	}
 
+	gtk_tree_path_free( path );
 	return FALSE;
 }
 
 
 /* Callback for collapse of a directory tree entry */
 static void
-dirtree_collapse_cb( GtkWidget *ctree_w, GtkCTreeNode *ctnode )
+dirtree_collapse_cb( GtkTreeView *tree_view, GtkTreeIter *iter, GtkTreePath *path, gpointer user_data )
 {
+	GtkTreeStore *store;
 	GNode *dnode;
 
 	if (globals.fsv_mode == FSV_SPLASH)
 		return;
 
-	dnode = (GNode *)gtk_ctree_node_get_row_data( GTK_CTREE(ctree_w), ctnode );
+	dnode = dnode_from_iter( iter );
+	if (dnode == NULL)
+		return;
+
+	/* Update the icon to collapsed */
+	store = get_tree_store( );
+	gtk_tree_store_set( store, iter, COL_PIXBUF, dir_colexp_mini_icons[0].pixbuf, -1 );
+
 	colexp( dnode, COLEXP_COLLAPSE_RECURSIVE );
 }
 
 
 /* Callback for expand of a directory tree entry */
 static void
-dirtree_expand_cb( GtkWidget *ctree_w, GtkCTreeNode *ctnode )
+dirtree_expand_cb( GtkTreeView *tree_view, GtkTreeIter *iter, GtkTreePath *path, gpointer user_data )
 {
+	GtkTreeStore *store;
 	GNode *dnode;
 
 	if (globals.fsv_mode == FSV_SPLASH)
 		return;
 
-	dnode = (GNode *)gtk_ctree_node_get_row_data( GTK_CTREE(ctree_w), ctnode );
+	dnode = dnode_from_iter( iter );
+	if (dnode == NULL)
+		return;
+
+	/* Update the icon to expanded */
+	store = get_tree_store( );
+	gtk_tree_store_set( store, iter, COL_PIXBUF, dir_colexp_mini_icons[1].pixbuf, -1 );
+
 	colexp( dnode, COLEXP_EXPAND );
 }
 
@@ -151,37 +218,23 @@ dirtree_icons_init( void )
 		mini_folder_closed_xpm,
 		mini_folder_open_xpm
 	};
-	GtkStyle *style;
-	GdkColor *trans_color;
-	GdkWindow *window;
-	GdkPixmap *pixmap;
-	GdkBitmap *mask;
 	int i;
 
-	style = gtk_widget_get_style( dir_ctree_w );
-	trans_color = &style->bg[GTK_STATE_NORMAL];
-	gtk_widget_realize( dir_ctree_w );
-	window = dir_ctree_w->window;
-
-	/* Make icons for collapsed and expanded directories */
-	for (i = 0; i < 2; i++) {
-		pixmap = gdk_pixmap_create_from_xpm_d( window, &mask, trans_color, dir_colexp_mini_xpms[i] );
-		dir_colexp_mini_icons[i].pixmap = pixmap;
-		dir_colexp_mini_icons[i].mask = mask;
-	}
+	for (i = 0; i < 2; i++)
+		dir_colexp_mini_icons[i].pixbuf = gdk_pixbuf_new_from_xpm_data( (const char **)dir_colexp_mini_xpms[i] );
 }
 
 
 /* Correspondence from window_init( ) */
 void
-dirtree_pass_widget( GtkWidget *ctree_w )
+dirtree_pass_widget( GtkWidget *tree_w )
 {
-	dir_ctree_w = ctree_w;
+	dir_tree_w = tree_w;
 
 	/* Connect signal handlers */
-	g_signal_connect( G_OBJECT(dir_ctree_w), "button_press_event", G_CALLBACK(dirtree_select_cb), NULL );
-	g_signal_connect( G_OBJECT(dir_ctree_w), "tree_collapse", G_CALLBACK(dirtree_collapse_cb), NULL );
-	g_signal_connect( G_OBJECT(dir_ctree_w), "tree_expand", G_CALLBACK(dirtree_expand_cb), NULL );
+	g_signal_connect( G_OBJECT(dir_tree_w), "button_press_event", G_CALLBACK(dirtree_select_cb), NULL );
+	g_signal_connect( G_OBJECT(dir_tree_w), "row-collapsed", G_CALLBACK(dirtree_collapse_cb), NULL );
+	g_signal_connect( G_OBJECT(dir_tree_w), "row-expanded", G_CALLBACK(dirtree_expand_cb), NULL );
 
 	dirtree_icons_init( );
 }
@@ -191,7 +244,9 @@ dirtree_pass_widget( GtkWidget *ctree_w )
 void
 dirtree_clear( void )
 {
-	gtk_clist_clear( GTK_CLIST(dir_ctree_w) );
+	GtkTreeStore *store = get_tree_store( );
+
+	gtk_tree_store_clear( store );
 	dirtree_current_dnode = NULL;
 }
 
@@ -200,40 +255,31 @@ dirtree_clear( void )
 void
 dirtree_entry_new( GNode *dnode )
 {
-	GtkCTreeNode *parent_ctnode = NULL;
+	GtkTreeIter *parent_iter = NULL;
+	GtkTreeIter *new_iter;
 	const char *name;
 	boolean expanded;
 
 	g_assert( NODE_IS_DIR(dnode) );
 
-	parent_ctnode = DIR_NODE_DESC(dnode->parent)->ctnode;
+	parent_iter = DIR_NODE_DESC(dnode->parent)->ctnode;
 	if (strlen( NODE_DESC(dnode)->name ) > 0)
 		name = NODE_DESC(dnode)->name;
 	else
 		name = _("/. (root)");
 	expanded = g_node_depth( dnode ) <= 2;
 
-	DIR_NODE_DESC(dnode)->ctnode = gui_ctree_node_add( dir_ctree_w, parent_ctnode, dir_colexp_mini_icons, name, expanded, dnode );
+	new_iter = gui_ctree_node_add( dir_tree_w, parent_iter, dir_colexp_mini_icons, name, expanded, dnode );
+	DIR_NODE_DESC(dnode)->ctnode = new_iter;
 
-	if (parent_ctnode == NULL) {
-		/* First entry was just added. Keep directory tree frozen
-		 * most of the time while scanning, otherwise it tends to
-		 * flicker annoyingly */
-		gtk_clist_freeze( GTK_CLIST(dir_ctree_w) );
-	}
-	else if (GTK_CTREE_ROW(parent_ctnode)->expanded) {
-		/* Pre-update (allow ctree to register new row) */
-		gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
-		gui_update( );
-		gtk_clist_freeze( GTK_CLIST(dir_ctree_w) );
-		/* Select last row */
-		gtk_ctree_select( GTK_CTREE(dir_ctree_w), DIR_NODE_DESC(dnode)->ctnode );
-		/* Scroll directory tree down to last row */
-		gui_clist_moveto_row( dir_ctree_w, -1, 0.0 );
-		/* Post-update (allow ctree to perform select/scroll) */
-		gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
-		gui_update( );
-		gtk_clist_freeze( GTK_CLIST(dir_ctree_w) );
+	if (parent_iter != NULL && dirtree_entry_expanded( dnode->parent )) {
+		/* Select the new entry */
+		GtkTreeSelection *sel = gtk_tree_view_get_selection( GTK_TREE_VIEW(dir_tree_w) );
+		gtk_tree_selection_select_iter( sel, new_iter );
+		/* Scroll to the new entry */
+		GtkTreePath *path = gtk_tree_model_get_path( GTK_TREE_MODEL(get_tree_store( )), new_iter );
+		gtk_tree_view_scroll_to_cell( GTK_TREE_VIEW(dir_tree_w), path, NULL, FALSE, 0.0, 0.0 );
+		gtk_tree_path_free( path );
 	}
 }
 
@@ -242,7 +288,7 @@ dirtree_entry_new( GNode *dnode )
 void
 dirtree_no_more_entries( void )
 {
-	gtk_clist_thaw( GTK_CLIST(dir_ctree_w) );
+	/* No freeze/thaw needed with GtkTreeView */
 }
 
 
@@ -252,24 +298,35 @@ dirtree_no_more_entries( void )
 void
 dirtree_entry_show( GNode *dnode )
 {
-	int row;
+	GtkTreeIter *iter;
+	GtkTreePath *path;
+	GtkTreeSelection *sel;
 
 	g_assert( NODE_IS_DIR(dnode) );
 
 	/* Repopulate file list if directory is different */
 	if (dnode != dirtree_current_dnode) {
 		filelist_populate( dnode );
-/* TODO: try removing this update from here */
 		gui_update( );
 	}
 
-	/* Scroll directory tree to proper entry */
-	row = gtk_clist_find_row_from_data( GTK_CLIST(dir_ctree_w), dnode );
-	if (row >= 0)
-		gtk_clist_select_row( GTK_CLIST(dir_ctree_w), row, 0 );
-	else
-		gtk_clist_unselect_all( GTK_CLIST(dir_ctree_w) );
-	gui_clist_moveto_row( dir_ctree_w, MAX(0, row), DIRTREE_SCROLL_TIME );
+	iter = DIR_NODE_DESC(dnode)->ctnode;
+	if (iter != NULL) {
+		path = gtk_tree_model_get_path( GTK_TREE_MODEL(get_tree_store( )), iter );
+		if (path != NULL) {
+			/* Select the entry */
+			sel = gtk_tree_view_get_selection( GTK_TREE_VIEW(dir_tree_w) );
+			gtk_tree_selection_select_iter( sel, iter );
+			/* Scroll to the entry */
+			gtk_tree_view_scroll_to_cell( GTK_TREE_VIEW(dir_tree_w), path, NULL, TRUE, 0.5, 0.0 );
+			gtk_tree_path_free( path );
+		}
+	}
+	else {
+		/* No iter - unselect all */
+		GtkTreeSelection *sel = gtk_tree_view_get_selection( GTK_TREE_VIEW(dir_tree_w) );
+		gtk_tree_selection_unselect_all( sel );
+	}
 
 	dirtree_current_dnode = dnode;
 }
@@ -279,9 +336,24 @@ dirtree_entry_show( GNode *dnode )
 boolean
 dirtree_entry_expanded( GNode *dnode )
 {
+	GtkTreeIter *iter;
+	GtkTreePath *path;
+	boolean expanded;
+
 	g_assert( NODE_IS_DIR(dnode) );
 
-	return GTK_CTREE_ROW(DIR_NODE_DESC(dnode)->ctnode)->expanded;
+	iter = DIR_NODE_DESC(dnode)->ctnode;
+	if (iter == NULL)
+		return FALSE;
+
+	path = gtk_tree_model_get_path( GTK_TREE_MODEL(get_tree_store( )), iter );
+	if (path == NULL)
+		return FALSE;
+
+	expanded = gtk_tree_view_row_expanded( GTK_TREE_VIEW(dir_tree_w), path );
+	gtk_tree_path_free( path );
+
+	return expanded;
 }
 
 
@@ -289,8 +361,8 @@ dirtree_entry_expanded( GNode *dnode )
 static void
 block_colexp_handlers( void )
 {
-	g_signal_handlers_block_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_collapse_cb), NULL );
-	g_signal_handlers_block_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_expand_cb), NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(dir_tree_w), G_CALLBACK(dirtree_collapse_cb), NULL );
+	g_signal_handlers_block_by_func( G_OBJECT(dir_tree_w), G_CALLBACK(dirtree_expand_cb), NULL );
 }
 
 
@@ -298,8 +370,32 @@ block_colexp_handlers( void )
 static void
 unblock_colexp_handlers( void )
 {
-	g_signal_handlers_unblock_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_collapse_cb), NULL );
-	g_signal_handlers_unblock_by_func( G_OBJECT(dir_ctree_w), G_CALLBACK(dirtree_expand_cb), NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(dir_tree_w), G_CALLBACK(dirtree_collapse_cb), NULL );
+	g_signal_handlers_unblock_by_func( G_OBJECT(dir_tree_w), G_CALLBACK(dirtree_expand_cb), NULL );
+}
+
+
+/* Helper: recursively collapse a row and all its children */
+static void
+collapse_recursive( GtkTreeView *tree_view, GtkTreeIter *iter )
+{
+	GtkTreeModel *model = gtk_tree_view_get_model( tree_view );
+	GtkTreeIter child;
+	GtkTreePath *path;
+
+	/* Collapse children first (depth-first) */
+	if (gtk_tree_model_iter_children( model, &child, iter )) {
+		do {
+			collapse_recursive( tree_view, &child );
+		} while (gtk_tree_model_iter_next( model, &child ));
+	}
+
+	/* Collapse this row */
+	path = gtk_tree_model_get_path( model, iter );
+	gtk_tree_view_collapse_row( tree_view, path );
+	/* Update icon to collapsed */
+	gtk_tree_store_set( GTK_TREE_STORE(model), iter, COL_PIXBUF, dir_colexp_mini_icons[0].pixbuf, -1 );
+	gtk_tree_path_free( path );
 }
 
 
@@ -307,11 +403,30 @@ unblock_colexp_handlers( void )
 void
 dirtree_entry_collapse_recursive( GNode *dnode )
 {
+	GtkTreeIter *iter;
+
 	g_assert( NODE_IS_DIR(dnode) );
 
+	iter = DIR_NODE_DESC(dnode)->ctnode;
+	if (iter == NULL)
+		return;
+
 	block_colexp_handlers( );
-	gtk_ctree_collapse_recursive( GTK_CTREE(dir_ctree_w), DIR_NODE_DESC(dnode)->ctnode );
+	collapse_recursive( GTK_TREE_VIEW(dir_tree_w), iter );
 	unblock_colexp_handlers( );
+}
+
+
+/* Helper: expand a row and update its icon */
+static void
+expand_row( GtkTreeView *tree_view, GtkTreeIter *iter )
+{
+	GtkTreeModel *model = gtk_tree_view_get_model( tree_view );
+	GtkTreePath *path = gtk_tree_model_get_path( model, iter );
+
+	gtk_tree_view_expand_row( tree_view, path, FALSE );
+	gtk_tree_store_set( GTK_TREE_STORE(model), iter, COL_PIXBUF, dir_colexp_mini_icons[1].pixbuf, -1 );
+	gtk_tree_path_free( path );
 }
 
 
@@ -328,11 +443,33 @@ dirtree_entry_expand( GNode *dnode )
 	block_colexp_handlers( );
 	up_node = dnode;
 	while (NODE_IS_DIR(up_node)) {
-		if (!dirtree_entry_expanded( up_node ))
-			gtk_ctree_expand( GTK_CTREE(dir_ctree_w), DIR_NODE_DESC(up_node)->ctnode );
+		if (!dirtree_entry_expanded( up_node )) {
+			GtkTreeIter *iter = DIR_NODE_DESC(up_node)->ctnode;
+			if (iter != NULL)
+				expand_row( GTK_TREE_VIEW(dir_tree_w), iter );
+		}
 		up_node = up_node->parent;
 	}
 	unblock_colexp_handlers( );
+}
+
+
+/* Helper: recursively expand a row and all its children */
+static void
+expand_recursive( GtkTreeView *tree_view, GtkTreeIter *iter )
+{
+	GtkTreeModel *model = gtk_tree_view_get_model( tree_view );
+	GtkTreeIter child;
+
+	/* Expand this row */
+	expand_row( tree_view, iter );
+
+	/* Expand children */
+	if (gtk_tree_model_iter_children( model, &child, iter )) {
+		do {
+			expand_recursive( tree_view, &child );
+		} while (gtk_tree_model_iter_next( model, &child ));
+	}
 }
 
 
@@ -341,20 +478,22 @@ dirtree_entry_expand( GNode *dnode )
 void
 dirtree_entry_expand_recursive( GNode *dnode )
 {
+	GtkTreeIter *iter;
+
 	g_assert( NODE_IS_DIR(dnode) );
 
 #if DEBUG
 	/* Guard against expansions inside collapsed subtrees */
-	/** NOTE: This function may be upgraded to behave similarly to
-	 ** dirtree_entry_expand( ) w.r.t. collapsed parent directories.
-	 ** This has been avoided thus far since such a behavior would
-	 ** not be used by the program. */
 	if (NODE_IS_DIR(dnode->parent))
 		g_assert( dirtree_entry_expanded( dnode->parent ) );
 #endif
 
+	iter = DIR_NODE_DESC(dnode)->ctnode;
+	if (iter == NULL)
+		return;
+
 	block_colexp_handlers( );
-	gtk_ctree_expand_recursive( GTK_CTREE(dir_ctree_w), DIR_NODE_DESC(dnode)->ctnode );
+	expand_recursive( GTK_TREE_VIEW(dir_tree_w), iter );
 	unblock_colexp_handlers( );
 }
 

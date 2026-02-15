@@ -41,8 +41,7 @@
 /* Icon container */
 typedef struct _Icon Icon;
 struct _Icon {
-	GdkPixmap *pixmap;
-	GdkBitmap *mask;
+	GdkPixbuf *pixbuf;
 };
 
 #endif /* __GTK_H__ */
@@ -63,7 +62,7 @@ void gui_clist_moveto_row( GtkWidget *clist_w, int row, double moveto_time );
 GtkWidget *gui_colorpicker_add( GtkWidget *parent_w, RGBcolor *init_color, const char *title, void (*callback)( ), void *callback_data );
 void gui_colorpicker_set_color( GtkWidget *colorpicker_w, RGBcolor *color );
 GtkWidget *gui_ctree_add( GtkWidget *parent_w );
-GtkCTreeNode *gui_ctree_node_add( GtkWidget *ctree_w, GtkCTreeNode *parent, Icon icon_pair[2], const char *text, boolean expanded, void *data );
+GtkTreeIter *gui_ctree_node_add( GtkWidget *tree_w, GtkTreeIter *parent, Icon icon_pair[2], const char *text, boolean expanded, void *data );
 void gui_cursor( GtkWidget *widget, int glyph );
 GtkWidget *gui_dateedit_add( GtkWidget *parent_w, time_t the_time, void (*callback)( ), void *callback_data );
 time_t gui_dateedit_get_time( GtkWidget *dateedit_w );

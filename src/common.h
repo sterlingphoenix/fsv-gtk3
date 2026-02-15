@@ -227,7 +227,7 @@ struct _DirNodeDesc {
 		int64		size;	/* Total subtree size (bytes) */
 		unsigned int	counts[NUM_NODE_TYPES]; /* Node type totals */
 	} subtree;
-	/* Following pointer should be of type GtkCTreeNode */
+	/* Following pointer should be of type GtkTreeIter* (heap-allocated) */
 	void		*ctnode;	/* Directory tree entry */
 	unsigned int	a_dlist;	/* Display list A */
 	unsigned int	b_dlist;	/* Display list B */

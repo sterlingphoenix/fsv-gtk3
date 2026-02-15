@@ -258,77 +258,141 @@ gui_toggle_button_add( GtkWidget *parent_w, const char *label, boolean active, v
 }
 
 
-/* The [multi-column] list widget (fitted into a scrolled window) */
+/* The [multi-column] list widget (fitted into a scrolled window).
+ * Returns a GtkTreeView backed by a GtkListStore.
+ * Model columns: pixbuf (0), text[0..num_cols-1] (1..num_cols), pointer (num_cols+1).
+ * First visible column shows pixbuf + text; remaining columns show text only. */
 GtkWidget *
 gui_clist_add( GtkWidget *parent_w, int num_cols, char *col_titles[] )
 {
 	GtkWidget *scrollwin_w;
-	GtkWidget *clist_w;
+	GtkWidget *tree_view_w;
+	GtkListStore *store;
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+	GtkTreeSelection *selection;
+	GType *col_types;
+	int total_cols;
 	int i;
+	int *num_cols_p;
 
 	/* Make the scrolled window widget */
 	scrollwin_w = gtk_scrolled_window_new( NULL, NULL );
 	gtk_scrolled_window_set_policy( GTK_SCROLLED_WINDOW(scrollwin_w), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC );
 	parent_child_full( parent_w, scrollwin_w, EXPAND, FILL );
 
-	/* Make the clist widget */
-	if (col_titles == NULL)
-		clist_w = gtk_clist_new( num_cols );
-	else
-		clist_w = gtk_clist_new_with_titles( num_cols, col_titles );
-	gtk_clist_set_selection_mode( GTK_CLIST(clist_w), GTK_SELECTION_SINGLE );
+	/* Build column types array: pixbuf, num_cols strings, pointer */
+	total_cols = num_cols + 2;
+	col_types = g_new( GType, total_cols );
+	col_types[0] = GDK_TYPE_PIXBUF;
 	for (i = 0; i < num_cols; i++)
-		gtk_clist_set_column_auto_resize( GTK_CLIST(clist_w), i, TRUE );
-	gtk_container_add( GTK_CONTAINER(scrollwin_w), clist_w );
-	gtk_widget_show( clist_w );
+		col_types[i + 1] = G_TYPE_STRING;
+	col_types[num_cols + 1] = G_TYPE_POINTER;
 
-	return clist_w;
+	store = gtk_list_store_newv( total_cols, col_types );
+	g_free( col_types );
+
+	tree_view_w = gtk_tree_view_new_with_model( GTK_TREE_MODEL(store) );
+	g_object_unref( store );
+	gtk_tree_view_set_headers_visible( GTK_TREE_VIEW(tree_view_w), col_titles != NULL );
+
+	/* First column: pixbuf + text */
+	column = gtk_tree_view_column_new( );
+	if (col_titles != NULL && col_titles[0] != NULL)
+		gtk_tree_view_column_set_title( column, col_titles[0] );
+	renderer = gtk_cell_renderer_pixbuf_new( );
+	gtk_tree_view_column_pack_start( column, renderer, FALSE );
+	gtk_tree_view_column_add_attribute( column, renderer, "pixbuf", 0 );
+	renderer = gtk_cell_renderer_text_new( );
+	gtk_tree_view_column_pack_start( column, renderer, TRUE );
+	gtk_tree_view_column_add_attribute( column, renderer, "text", 1 );
+	gtk_tree_view_column_set_resizable( column, TRUE );
+	gtk_tree_view_append_column( GTK_TREE_VIEW(tree_view_w), column );
+
+	/* Additional text columns */
+	for (i = 1; i < num_cols; i++) {
+		renderer = gtk_cell_renderer_text_new( );
+		column = gtk_tree_view_column_new_with_attributes(
+			(col_titles != NULL) ? col_titles[i] : NULL,
+			renderer, "text", i + 1, NULL );
+		gtk_tree_view_column_set_resizable( column, TRUE );
+		gtk_tree_view_append_column( GTK_TREE_VIEW(tree_view_w), column );
+	}
+
+	/* Single selection mode */
+	selection = gtk_tree_view_get_selection( GTK_TREE_VIEW(tree_view_w) );
+	gtk_tree_selection_set_mode( selection, GTK_SELECTION_SINGLE );
+
+	/* Store num_cols on the widget for later use */
+	num_cols_p = g_new( int, 1 );
+	*num_cols_p = num_cols;
+	g_object_set_data_full( G_OBJECT(tree_view_w), "num_cols", num_cols_p, g_free );
+
+	gtk_container_add( GTK_CONTAINER(scrollwin_w), tree_view_w );
+	gtk_widget_show( tree_view_w );
+
+	return tree_view_w;
 }
 
 
-/* Scrolls a clist (or ctree) to a given row (-1 indicates last row)
+/* Scrolls a tree view to a given row (-1 indicates last row).
+ * For instant scroll (moveto_time <= 0), uses gtk_tree_view_scroll_to_cell.
+ * For animated scroll, morphs the scrolled window's vadjustment.
  * WARNING: This implementation does not gracefully handle multiple
- * animated scrolls on the same clist! */
+ * animated scrolls on the same tree view! */
 void
-gui_clist_moveto_row( GtkWidget *clist_w, int row, double moveto_time )
+gui_clist_moveto_row( GtkWidget *tree_view_w, int row, double moveto_time )
 {
-	GtkAdjustment *clist_vadj;
+	GtkTreeModel *model;
+	GtkTreePath *path;
+	GtkAdjustment *vadj;
+	GtkWidget *scrollwin_w;
 	double *anim_value_var;
 	float k, new_value;
-	int i;
+	int n_rows;
+
+	model = gtk_tree_view_get_model( GTK_TREE_VIEW(tree_view_w) );
+	n_rows = gtk_tree_model_iter_n_children( model, NULL );
+	if (n_rows == 0)
+		return;
+
+	if (row < 0)
+		row = n_rows - 1;
+	if (row >= n_rows)
+		row = n_rows - 1;
 
 	if (moveto_time <= 0.0) {
-		/* Instant scroll (no animation) */
-		if (row >= 0)
-			i = row;
-		else
-			i = GTK_CLIST(clist_w)->rows - 1; /* bottom */
-		gtk_clist_moveto( GTK_CLIST(clist_w), i, 0, 0.5, 0.0 );
+		/* Instant scroll */
+		path = gtk_tree_path_new_from_indices( row, -1 );
+		gtk_tree_view_scroll_to_cell( GTK_TREE_VIEW(tree_view_w), path, NULL, TRUE, 0.5, 0.0 );
+		gtk_tree_path_free( path );
 		return;
 	}
 
-	if (row >= 0)
-		k = (double)row / (double)GTK_CLIST(clist_w)->rows;
-	else
-		k = 1.0; /* bottom of clist */
-	clist_vadj = gtk_clist_get_vadjustment( GTK_CLIST(clist_w) );
-	k = k * clist_vadj->upper - 0.5 * clist_vadj->page_size;
-	new_value = CLAMP(k, 0.0, clist_vadj->upper - clist_vadj->page_size);
+	/* Animated scroll using vadjustment */
+	scrollwin_w = gtk_widget_get_parent( tree_view_w );
+	if (!GTK_IS_SCROLLED_WINDOW(scrollwin_w))
+		return;
+	vadj = gtk_scrolled_window_get_vadjustment( GTK_SCROLLED_WINDOW(scrollwin_w) );
 
-	/* Allocate an external value variable if clist adjustment doesn't
+	k = (double)row / (double)n_rows;
+	k = k * vadj->upper - 0.5 * vadj->page_size;
+	new_value = CLAMP(k, 0.0, vadj->upper - vadj->page_size);
+
+	/* Allocate an external value variable if adjustment doesn't
 	 * already have one */
-        anim_value_var = g_object_get_data( G_OBJECT(clist_vadj), "anim_value_var" );
-	if (anim_value_var == NULL ); {
+	anim_value_var = g_object_get_data( G_OBJECT(vadj), "anim_value_var" );
+	if (anim_value_var == NULL) {
 		anim_value_var = NEW(double);
-		g_object_set_data_full( G_OBJECT(clist_vadj), "anim_value_var", anim_value_var, _xfree );
+		g_object_set_data_full( G_OBJECT(vadj), "anim_value_var", anim_value_var, _xfree );
 	}
 
-	/* If clist is already scrolling, stop it */
+	/* If already scrolling, stop it */
 	morph_break( anim_value_var );
 
-	/* Begin clist animation */
-	*anim_value_var = clist_vadj->value;
-	morph_full( anim_value_var, MORPH_SIGMOID, new_value, moveto_time, adjustment_step_cb, adjustment_step_cb, clist_vadj );
+	/* Begin animation */
+	*anim_value_var = vadj->value;
+	morph_full( anim_value_var, MORPH_SIGMOID, new_value, moveto_time, adjustment_step_cb, adjustment_step_cb, vadj );
 }
 
 
@@ -386,48 +450,94 @@ gui_colorpicker_set_color( GtkWidget *colorbutton_w, RGBcolor *color )
 }
 
 
-/* The tree widget (fitted into a scrolled window) */
+/* Column indices for the tree (ctree replacement) model */
+enum {
+	CTREE_COL_PIXBUF,	/* GdkPixbuf - node icon */
+	CTREE_COL_NAME,		/* gchararray - display name */
+	CTREE_COL_DATA,		/* gpointer - user data (GNode *) */
+	CTREE_NUM_COLS
+};
+
+
+/* The tree widget (fitted into a scrolled window).
+ * Returns a GtkTreeView backed by a GtkTreeStore. */
 GtkWidget *
 gui_ctree_add( GtkWidget *parent_w )
 {
 	GtkWidget *scrollwin_w;
-	GtkWidget *ctree_w;
+	GtkWidget *tree_view_w;
+	GtkTreeStore *store;
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+	GtkTreeSelection *selection;
 
 	/* Make the scrolled window widget */
 	scrollwin_w = gtk_scrolled_window_new( NULL, NULL );
 	gtk_scrolled_window_set_policy( GTK_SCROLLED_WINDOW(scrollwin_w), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC );
-        parent_child_full( parent_w, scrollwin_w, EXPAND, FILL );
+	parent_child_full( parent_w, scrollwin_w, EXPAND, FILL );
 
-	/* Make the ctree widget */
-	ctree_w = gtk_ctree_new( 1, 0 );
-	gtk_clist_set_column_auto_resize( GTK_CLIST(ctree_w), 0, TRUE );
-	gtk_ctree_set_indent( GTK_CTREE(ctree_w), 16 );
-	gtk_ctree_set_line_style( GTK_CTREE(ctree_w), GTK_CTREE_LINES_DOTTED );
-	gtk_clist_set_selection_mode( GTK_CLIST(ctree_w), GTK_SELECTION_BROWSE );
-	gtk_ctree_set_spacing( GTK_CTREE(ctree_w), 2 );
-	gtk_container_add( GTK_CONTAINER(scrollwin_w), ctree_w );
-	gtk_widget_show( ctree_w );
+	/* Make the tree store and tree view */
+	store = gtk_tree_store_new( CTREE_NUM_COLS, GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_POINTER );
+	tree_view_w = gtk_tree_view_new_with_model( GTK_TREE_MODEL(store) );
+	g_object_unref( store );
 
-	return ctree_w;
+	/* Single column: icon + name */
+	column = gtk_tree_view_column_new( );
+	renderer = gtk_cell_renderer_pixbuf_new( );
+	gtk_tree_view_column_pack_start( column, renderer, FALSE );
+	gtk_tree_view_column_add_attribute( column, renderer, "pixbuf", CTREE_COL_PIXBUF );
+	renderer = gtk_cell_renderer_text_new( );
+	gtk_tree_view_column_pack_start( column, renderer, TRUE );
+	gtk_tree_view_column_add_attribute( column, renderer, "text", CTREE_COL_NAME );
+	gtk_tree_view_append_column( GTK_TREE_VIEW(tree_view_w), column );
+
+	/* Tree appearance */
+	gtk_tree_view_set_headers_visible( GTK_TREE_VIEW(tree_view_w), FALSE );
+	gtk_tree_view_set_enable_tree_lines( GTK_TREE_VIEW(tree_view_w), TRUE );
+
+	/* Browse selection mode */
+	selection = gtk_tree_view_get_selection( GTK_TREE_VIEW(tree_view_w) );
+	gtk_tree_selection_set_mode( selection, GTK_SELECTION_BROWSE );
+
+	gtk_container_add( GTK_CONTAINER(scrollwin_w), tree_view_w );
+	gtk_widget_show( tree_view_w );
+
+	return tree_view_w;
 }
 
 
-/* This adds a new GtkCTreeNode (tree item) to the given ctree.
- * GtkWidget *ctree_w: the ctree widget
- * GtkCTreeNode *parent: the parent node (NULL if creating a top-level node)
- * Icon icon_pair[2]: two icons, for collapsed ([0]) and expanded ([1]) states
- * const char *text: label for node
- * boolean expanded: initial state of node
- * void *data: arbitrary pointer to associate data with node */
-GtkCTreeNode *
-gui_ctree_node_add( GtkWidget *ctree_w, GtkCTreeNode *parent, Icon icon_pair[2], const char *text, boolean expanded, void *data )
+/* Adds a new node to a tree view backed by a GtkTreeStore.
+ * Returns a heap-allocated GtkTreeIter (caller stores in ctnode field).
+ * icon_pair[0] = collapsed icon, icon_pair[1] = expanded icon.
+ * The collapsed icon is displayed initially; expand/collapse callbacks
+ * swap icons as needed. */
+GtkTreeIter *
+gui_ctree_node_add( GtkWidget *tree_w, GtkTreeIter *parent, Icon icon_pair[2], const char *text, boolean expanded, void *data )
 {
-	GtkCTreeNode *ctnode;
+	GtkTreeStore *store;
+	GtkTreeIter *iter;
+	GdkPixbuf *icon;
 
-	ctnode = gtk_ctree_insert_node( GTK_CTREE(ctree_w), parent, NULL, (char **)&text, 1, icon_pair[0].pixmap, icon_pair[0].mask, icon_pair[1].pixmap, icon_pair[1].mask, FALSE, expanded );
-	gtk_ctree_node_set_row_data( GTK_CTREE(ctree_w), ctnode, data );
+	store = GTK_TREE_STORE(gtk_tree_view_get_model( GTK_TREE_VIEW(tree_w) ));
+	iter = g_new( GtkTreeIter, 1 );
+	gtk_tree_store_append( store, iter, parent );
 
-	return ctnode;
+	/* Use collapsed or expanded icon based on initial state */
+	icon = expanded ? icon_pair[1].pixbuf : icon_pair[0].pixbuf;
+	gtk_tree_store_set( store, iter,
+		CTREE_COL_PIXBUF, icon,
+		CTREE_COL_NAME, text,
+		CTREE_COL_DATA, data,
+		-1 );
+
+	/* Expand the row if requested */
+	if (expanded) {
+		GtkTreePath *path = gtk_tree_model_get_path( GTK_TREE_MODEL(store), iter );
+		gtk_tree_view_expand_row( GTK_TREE_VIEW(tree_w), path, FALSE );
+		gtk_tree_path_free( path );
+	}
+
+	return iter;
 }
 
 
@@ -851,25 +961,19 @@ gui_vpaned_add( GtkWidget *parent_w, int divider_y_pos )
 }
 
 
-/* The pixmap widget (created from XPM data) */
+/* The image widget (created from XPM data) */
 GtkWidget *
 gui_pixmap_xpm_add( GtkWidget *parent_w, char **xpm_data )
 {
-	GtkWidget *pixmap_w;
-	GtkStyle *style;
-	GdkPixmap *pixmap;
-	GdkBitmap *mask;
+	GtkWidget *image_w;
+	GdkPixbuf *pixbuf;
 
-	/* Realize parent widget to prevent "NULL window" error */
-	gtk_widget_realize( parent_w );
-	style = gtk_widget_get_style( parent_w );
-	pixmap = gdk_pixmap_create_from_xpm_d( parent_w->window, &mask, &style->bg[GTK_STATE_NORMAL], xpm_data );
-	pixmap_w = gtk_pixmap_new( pixmap, mask );
-	gdk_pixmap_unref( pixmap );
-	gdk_bitmap_unref( mask );
-	parent_child( parent_w, pixmap_w );
+	pixbuf = gdk_pixbuf_new_from_xpm_data( (const char **)xpm_data );
+	image_w = gtk_image_new_from_pixbuf( pixbuf );
+	g_object_unref( pixbuf );
+	parent_child( parent_w, image_w );
 
-	return pixmap_w;
+	return image_w;
 }
 
 
@@ -1313,14 +1417,11 @@ gui_filesel_window( const char *title, const char *init_filename, void (*ok_call
 void
 gui_window_icon_xpm( GtkWidget *window_w, char **xpm_data )
 {
-	GtkStyle *style;
-	GdkPixmap *icon_pixmap;
-	GdkBitmap *mask;
+	GdkPixbuf *pixbuf;
 
-	gtk_widget_realize( window_w );
-	style = gtk_widget_get_style( window_w );
-	icon_pixmap = gdk_pixmap_create_from_xpm_d( window_w->window, &mask, &style->bg[GTK_STATE_NORMAL], xpm_data );
-	gdk_window_set_icon( window_w->window, NULL, icon_pixmap, mask );
+	pixbuf = gdk_pixbuf_new_from_xpm_data( (const char **)xpm_data );
+	gtk_window_set_icon( GTK_WINDOW(window_w), pixbuf );
+	g_object_unref( pixbuf );
 }
 
 
