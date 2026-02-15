@@ -224,6 +224,10 @@ ogl_draw( void )
 	static FsvMode prev_mode = FSV_NONE;
 	int err;
 
+	/* Ensure GL context is current - important when called from
+	 * the animation idle loop rather than from expose_cb */
+	ogl_make_current( );
+
 	geometry_highlight_node( NULL, TRUE );
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
@@ -377,12 +381,32 @@ realize_cb( GtkWidget *widget, gpointer user_data )
 }
 
 
+/* Helper callback for map (widget becomes visible on screen).
+ * Re-apply background fix in case the style engine reset it. */
+static gboolean
+map_cb( GtkWidget *widget, GdkEventAny *event, gpointer user_data )
+{
+	GdkWindow *gdk_win = gtk_widget_get_window( widget );
+	if (gdk_win != NULL)
+		gdk_window_set_back_pixmap( gdk_win, NULL, FALSE );
+	return FALSE;
+}
+
+
 /* Helper callback for configure (resize) */
 static gboolean
 configure_cb( GtkWidget *widget, GdkEventConfigure *event, gpointer user_data )
 {
+	GdkWindow *gdk_win;
+
 	if (glx_context == NULL)
 		return FALSE;
+
+	/* Re-apply background fix in case style engine or theme reset it.
+	 * This prevents GDK from painting over our GL content on expose. */
+	gdk_win = gtk_widget_get_window( widget );
+	if (gdk_win != NULL)
+		gdk_window_set_back_pixmap( gdk_win, NULL, FALSE );
 
 	gl_area_make_current( widget );
 	ogl_resize( );
@@ -417,6 +441,7 @@ ogl_widget_new( void )
 
 	/* Connect signals */
 	g_signal_connect( viewport_gl_area_w, "realize", G_CALLBACK(realize_cb), NULL );
+	g_signal_connect( viewport_gl_area_w, "map-event", G_CALLBACK(map_cb), NULL );
 	g_signal_connect( viewport_gl_area_w, "configure-event", G_CALLBACK(configure_cb), NULL );
 	g_signal_connect( viewport_gl_area_w, "expose-event", G_CALLBACK(expose_cb), NULL );
 

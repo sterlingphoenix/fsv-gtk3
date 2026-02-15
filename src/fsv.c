@@ -96,7 +96,7 @@ initial_camera_pan( void *data )
 
 	if (!strcmp( mesg, "new_fs" )) {
 		/* First look at new filesystem */
-		camera_look_at_full( root_dnode, MORPH_SIGMOID, 4.0 );
+		camera_look_at_full( root_dnode, MORPH_SIGMOID, 2.0 );
 	}
 	else {
 		/* Same filesystem, different visualization mode */
@@ -201,6 +201,7 @@ fsv_write_config( void )
 {
 	NVStore *fsvrc;
 
+	g_message( "fsv_write_config: called, fsv_mode=%d", globals.fsv_mode );
 	fsvrc = nvs_open( CONFIG_FILE );
 	nvs_write_int_token( fsvrc, "/fsv/mode", globals.fsv_mode, tokens_fsv_mode );
 	nvs_close( fsvrc );

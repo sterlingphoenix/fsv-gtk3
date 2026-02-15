@@ -10,10 +10,6 @@ on_file_save_settings_activate         (GtkMenuItem     *menuitem,
                                         gpointer         user_data);
 
 void
-on_file_save_settings_activate         (GtkMenuItem     *menuitem,
-                                        gpointer         user_data);
-
-void
 on_file_exit_activate                  (GtkMenuItem     *menuitem,
                                         gpointer         user_data);
 

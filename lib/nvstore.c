@@ -27,6 +27,7 @@
 
 #include "nvstore.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -162,10 +163,21 @@ nvs_write_file( NVStore *nvs )
 {
 	FILE *fp;
 	GList *keys, *llink;
+	char *dir;
+	int rc;
+
+	/* Ensure parent directory exists */
+	dir = g_path_get_dirname( nvs->filename );
+	rc = g_mkdir_with_parents( dir, 0755 );
+	if (rc != 0)
+		g_warning( "nvstore: failed to create directory '%s': %s", dir, g_strerror( errno ) );
+	g_free( dir );
 
 	fp = fopen( nvs->filename, "w" );
-	if (fp == NULL)
+	if (fp == NULL) {
+		g_warning( "nvstore: failed to open '%s' for writing: %s", nvs->filename, g_strerror( errno ) );
 		return;
+	}
 
 	fprintf( fp, "# fsv configuration file\n" );
 

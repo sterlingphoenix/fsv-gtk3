@@ -71,7 +71,7 @@
 /**** Constants, macros, types ****************/
 
 /* Configuration file (in user's home directory) */
-#define CONFIG_FILE		"~/.fsvrc"
+#define CONFIG_FILE		"~/.config/fsv-gtk3/fsvrc"
 
 /* Mathematical constants et. al. */
 #define LN_2			0.69314718055994530942

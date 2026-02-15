@@ -35,12 +35,12 @@
 
 
 /* Lower/upper bounds on pan times (in seconds) */
-#define DISCV_CAMERA_MIN_PAN_TIME	0.5
-#define DISCV_CAMERA_MAX_PAN_TIME	3.0
-#define MAPV_CAMERA_MIN_PAN_TIME	0.5
-#define MAPV_CAMERA_MAX_PAN_TIME	4.0
-#define TREEV_CAMERA_MIN_PAN_TIME	1.0
-#define TREEV_CAMERA_MAX_PAN_TIME	4.0
+#define DISCV_CAMERA_MIN_PAN_TIME	0.25
+#define DISCV_CAMERA_MAX_PAN_TIME	1.5
+#define MAPV_CAMERA_MIN_PAN_TIME	0.25
+#define MAPV_CAMERA_MAX_PAN_TIME	2.0
+#define TREEV_CAMERA_MIN_PAN_TIME	0.5
+#define TREEV_CAMERA_MAX_PAN_TIME	2.0
 
 #define TREEV_CAMERA_AVG_VELOCITY	1024.0
 
@@ -747,7 +747,7 @@ discv_look_at( GNode *node, MorphType mtype, double pan_time_override )
 		pan_time = pan_time_override;
 	else {
 /* TODO: write a *real* pan_time function here */
-		pan_time = 2.0;
+		pan_time = 1.0;
 		/*pan_time = CLAMP(k, DISCV_CAMERA_MIN_PAN_TIME, DISCV_CAMERA_MAX_PAN_TIME);*/
 	}
 
