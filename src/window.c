@@ -213,13 +213,13 @@ window_init( FsvMode fsv_mode )
 
 	/* Directory tree goes in top pane */
 	dir_ctree_w = gui_ctree_add( NULL );
-	gtk_paned_add1( GTK_PANED(vpaned_w), dir_ctree_w->parent );
-	gtk_widget_show( dir_ctree_w->parent );
+	gtk_paned_add1( GTK_PANED(vpaned_w), gtk_widget_get_parent( dir_ctree_w ) );
+	gtk_widget_show( gtk_widget_get_parent( dir_ctree_w ) );
 
 	/* File list goes in bottom pane */
 	file_clist_w = gui_clist_add( NULL, 3, NULL );
-	gtk_paned_add2( GTK_PANED(vpaned_w), file_clist_w->parent );
-	gtk_widget_show( file_clist_w->parent );
+	gtk_paned_add2( GTK_PANED(vpaned_w), gtk_widget_get_parent( file_clist_w ) );
+	gtk_widget_show( gtk_widget_get_parent( file_clist_w ) );
 
 	/* Left statusbar */
 	left_statusbar_w = gui_statusbar_add( left_vbox_w );

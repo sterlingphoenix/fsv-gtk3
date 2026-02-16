@@ -201,7 +201,6 @@ fsv_write_config( void )
 {
 	NVStore *fsvrc;
 
-	g_message( "fsv_write_config: called, fsv_mode=%d", globals.fsv_mode );
 	fsvrc = nvs_open( CONFIG_FILE );
 	nvs_write_int_token( fsvrc, "/fsv/mode", globals.fsv_mode, tokens_fsv_mode );
 	nvs_close( fsvrc );

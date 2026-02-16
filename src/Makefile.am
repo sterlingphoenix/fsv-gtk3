@@ -16,8 +16,7 @@ AM_CPPFLAGS = \
 	@X11_CFLAGS@
 
 AM_CFLAGS = \
-	-Wno-incompatible-pointer-types \
-	-Wno-deprecated-declarations
+	-Wno-incompatible-pointer-types
 
 bin_PROGRAMS = fsv
 noinst_HEADERS = \

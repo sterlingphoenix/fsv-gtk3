@@ -568,14 +568,14 @@ gui_cursor( GtkWidget *widget, int glyph )
 
 	/* Create new cursor and make it active */
 	if (glyph >= 0)
-		cursor = gdk_cursor_new( (GdkCursorType)glyph );
+		cursor = gdk_cursor_new_for_display( gtk_widget_get_display( widget ), (GdkCursorType)glyph );
 	else
 		cursor = NULL;
-	gdk_window_set_cursor( widget->window, cursor );
+	gdk_window_set_cursor( gtk_widget_get_window( widget ), cursor );
 
 	/* Don't need the old cursor anymore */
 	if (prev_cursor != NULL)
-		gdk_cursor_destroy( prev_cursor );
+		gdk_cursor_unref( prev_cursor );
 
 	if (glyph >= 0) {
 		/* Save new cursor information */
@@ -804,14 +804,10 @@ GtkWidget *
 gui_menu_item_add( GtkWidget *menu_w, const char *label, void (*callback)( ), void *callback_data )
 {
 	GtkWidget *menu_item_w;
-	gulong handler_id;
-
 	menu_item_w = gtk_menu_item_new_with_label( label );
 	gtk_menu_shell_append( GTK_MENU_SHELL(menu_w), menu_item_w );
-	if (callback != NULL) {
-		handler_id = g_signal_connect( G_OBJECT(menu_item_w), "activate", G_CALLBACK(callback), callback_data );
-		g_message( "gui_menu_item_add: '%s' handler_id=%lu", label, handler_id );
-	}
+	if (callback != NULL)
+		g_signal_connect( G_OBJECT(menu_item_w), "activate", G_CALLBACK(callback), callback_data );
 	gtk_widget_show( menu_item_w );
 
 	return menu_item_w;
@@ -849,7 +845,7 @@ gui_radio_menu_item_add( GtkWidget *menu_w, const char *label, void (*callback)(
 	}
 	else {
 		radmenu_item_w = gtk_radio_menu_item_new_with_label( radio_group, label );
-		radio_group = gtk_radio_menu_item_group( GTK_RADIO_MENU_ITEM(radmenu_item_w) );
+		radio_group = gtk_radio_menu_item_get_group( GTK_RADIO_MENU_ITEM(radmenu_item_w) );
 		gtk_menu_shell_append( GTK_MENU_SHELL(menu_w), radmenu_item_w );
 		if (radmenu_item_num == init_selected)
 			gtk_check_menu_item_set_active( GTK_CHECK_MENU_ITEM(radmenu_item_w), TRUE );
@@ -862,47 +858,76 @@ gui_radio_menu_item_add( GtkWidget *menu_w, const char *label, void (*callback)(
 }
 
 
-/* The option menu widget. Options must have already been defined using
+/* Storage for option menu items being built */
+struct OptionMenuItem {
+	const char *label;
+	void (*callback)( );
+	void *callback_data;
+};
+static struct OptionMenuItem optmenu_items[16];
+static int optmenu_item_count = 0;
+
+
+/* Callback dispatcher for combo box "changed" signal */
+static void
+option_menu_changed_cb( GtkComboBox *combo, gpointer data )
+{
+	struct OptionMenuItem *items;
+	int count;
+	int active;
+
+	active = gtk_combo_box_get_active( combo );
+	items = (struct OptionMenuItem *)g_object_get_data( G_OBJECT(combo), "optmenu_items" );
+	count = GPOINTER_TO_INT(g_object_get_data( G_OBJECT(combo), "optmenu_item_count" ));
+	if (active >= 0 && active < count && items[active].callback != NULL) {
+		void (*cb)( GtkWidget *, void * ) = (void (*)( GtkWidget *, void * ))items[active].callback;
+		cb( GTK_WIDGET(combo), items[active].callback_data );
+	}
+}
+
+
+/* The combo box widget. Options must have already been defined using
  * gui_option_menu_item( ) */
 GtkWidget *
 gui_option_menu_add( GtkWidget *parent_w, int init_selected )
 {
-	static GtkWidget *menu_w = NULL;
-	GtkWidget *optmenu_w = NULL;
+	GtkWidget *combo_w;
+	struct OptionMenuItem *items_copy;
+	int i;
 
-	if (GTK_IS_MENU_ITEM(parent_w)) {
-		/* gui_option_menu_item( ) has a menu item for us */
-		if (menu_w == NULL)
-			menu_w = gtk_menu_new( );
-		gtk_menu_shell_append( GTK_MENU_SHELL(menu_w), parent_w );
-		gtk_widget_show( parent_w );
-	}
-	else {
-		/* Make the finished option menu */
-		optmenu_w = gtk_option_menu_new( );
-		gtk_option_menu_set_menu( GTK_OPTION_MENU(optmenu_w), menu_w );
-		gtk_option_menu_set_history( GTK_OPTION_MENU(optmenu_w), init_selected );
-		parent_child( parent_w, optmenu_w );
-		menu_w = NULL;
-	}
+	combo_w = gtk_combo_box_text_new( );
+	for (i = 0; i < optmenu_item_count; i++)
+		gtk_combo_box_text_append_text( GTK_COMBO_BOX_TEXT(combo_w), optmenu_items[i].label );
 
-	return optmenu_w;
+	/* Store item data on the combo box for the callback dispatcher */
+	items_copy = g_new( struct OptionMenuItem, optmenu_item_count );
+	memcpy( items_copy, optmenu_items, optmenu_item_count * sizeof(struct OptionMenuItem) );
+	g_object_set_data_full( G_OBJECT(combo_w), "optmenu_items", items_copy, g_free );
+	g_object_set_data( G_OBJECT(combo_w), "optmenu_item_count", GINT_TO_POINTER(optmenu_item_count) );
+
+	gtk_combo_box_set_active( GTK_COMBO_BOX(combo_w), init_selected );
+	g_signal_connect( G_OBJECT(combo_w), "changed", G_CALLBACK(option_menu_changed_cb), NULL );
+
+	parent_child( parent_w, combo_w );
+	optmenu_item_count = 0;
+
+	return combo_w;
 }
 
 
-/* Option menu definiton. Call this once for each menu item, and then call
+/* Combo box item definition. Call this once for each menu item, and then call
  * gui_option_menu_add( ) to produce the finished widget */
 GtkWidget *
 gui_option_menu_item( const char *label, void (*callback)( ), void *callback_data )
 {
-	GtkWidget *menu_item_w;
+	g_assert( optmenu_item_count < 16 );
+	optmenu_items[optmenu_item_count].label = label;
+	optmenu_items[optmenu_item_count].callback = callback;
+	optmenu_items[optmenu_item_count].callback_data = callback_data;
+	optmenu_item_count++;
 
-	menu_item_w = gtk_menu_item_new_with_label( label );
-	if (callback != NULL)
-		g_signal_connect( G_OBJECT(menu_item_w), "activate", G_CALLBACK(callback), callback_data );
-	gui_option_menu_add( menu_item_w, NIL );
-
-	return menu_item_w;
+	/* Return value is no longer meaningful (was GtkMenuItem*) */
+	return NULL;
 }
 
 
@@ -977,65 +1002,54 @@ gui_pixmap_xpm_add( GtkWidget *parent_w, char **xpm_data )
 }
 
 
-/* The color preview widget */
+/* The color preview widget (GtkDrawingArea) */
 GtkWidget *
 gui_preview_add( GtkWidget *parent_w )
 {
-	GtkWidget *preview_w;
+	GtkWidget *drawing_w;
 
-	preview_w = gtk_preview_new( GTK_PREVIEW_COLOR );
-	parent_child_full( parent_w, preview_w, EXPAND, FILL );
+	drawing_w = gtk_drawing_area_new( );
+	gtk_widget_set_size_request( drawing_w, 64, 16 );
+	parent_child_full( parent_w, drawing_w, EXPAND, FILL );
 
-	return preview_w;
+	return drawing_w;
 }
 
 
-/* Helper callback for gui_preview_spectrum( ) */
-/* BUG: This does not handle resizes correctly */
-static int
-preview_spectrum_draw_cb( GtkWidget *preview_w, void *unused, const char *evtype )
+/* Expose/draw callback for the spectrum drawing area */
+static gboolean
+preview_spectrum_expose_cb( GtkWidget *drawing_w, GdkEventExpose *event, gpointer data )
 {
 	RGBcolor (*spectrum_func)( double x );
 	RGBcolor color;
+	cairo_t *cr;
 	int width, height;
-	int prev_width, prev_height;
 	int i;
-	unsigned char *rowbuf;
 
-	width = preview_w->allocation.width;
-	height = preview_w->allocation.height;
-
-	prev_width = GTK_PREVIEW(preview_w)->buffer_width;
-	prev_height = GTK_PREVIEW(preview_w)->buffer_height;
-
-	/* Set new preview size if allocation has changed */
-	if ((width != prev_width) || (height != prev_height))
-		gtk_preview_size( GTK_PREVIEW(preview_w), width, height );
-	else if (!strcmp( evtype, "expose" ))
+	spectrum_func = (RGBcolor (*)( double x ))g_object_get_data( G_OBJECT(drawing_w), "spectrum_func" );
+	if (spectrum_func == NULL)
 		return FALSE;
 
-	if (!GTK_WIDGET_DRAWABLE(preview_w))
+	{
+		GtkAllocation alloc;
+		gtk_widget_get_allocation( drawing_w, &alloc );
+		width = alloc.width;
+		height = alloc.height;
+	}
+	if (width <= 0 || height <= 0)
 		return FALSE;
 
-	/* Get spectrum function */
-	spectrum_func = (RGBcolor (*)( double x ))g_object_get_data( G_OBJECT(preview_w), "spectrum_func" );
+	cr = gdk_cairo_create( gtk_widget_get_window( drawing_w ) );
 
-	/* Create one row of the spectrum image */
-	rowbuf = NEW_ARRAY(unsigned char, 3 * width);
+	/* Draw spectrum as vertical 1-pixel-wide stripes */
 	for (i = 0; i < width; i++) {
-		color = (spectrum_func)( (double)i / (double)(width - 1) ); /* struct assign */
-		rowbuf[3 * i] = (unsigned char)(255.0 * color.r);
-		rowbuf[3 * i + 1] = (unsigned char)(255.0 * color.g);
-		rowbuf[3 * i + 2] = (unsigned char)(255.0 * color.b);
+		color = (spectrum_func)( (double)i / (double)(width - 1) );
+		cairo_set_source_rgb( cr, color.r, color.g, color.b );
+		cairo_rectangle( cr, i, 0, 1, height );
+		cairo_fill( cr );
 	}
 
-	/* Draw spectrum into preview widget, row by row */
-	for (i = 0; i < height; i++)
-		gtk_preview_draw_row( GTK_PREVIEW(preview_w), rowbuf, 0, i, width );
-	xfree( rowbuf );
-
-	gtk_widget_draw( preview_w, NULL );
-
+	cairo_destroy( cr );
 	return FALSE;
 }
 
@@ -1049,19 +1063,18 @@ gui_preview_spectrum( GtkWidget *preview_w, RGBcolor (*spectrum_func)( double x 
 	static const char data_key[] = "spectrum_func";
 	boolean first_time;
 
-        /* Check if this is first-time initialization */
-        first_time = g_object_get_data( G_OBJECT(preview_w), data_key ) == NULL;
+	/* Check if this is first-time initialization */
+	first_time = g_object_get_data( G_OBJECT(preview_w), data_key ) == NULL;
 
-	/* Attach spectrum function to preview widget */
+	/* Attach spectrum function to drawing area widget */
 	g_object_set_data( G_OBJECT(preview_w), data_key, (void *)spectrum_func );
 
 	if (first_time) {
-		/* Attach draw callback */
-		g_signal_connect( G_OBJECT(preview_w), "expose_event", G_CALLBACK(preview_spectrum_draw_cb), "expose" );
-		g_signal_connect( G_OBJECT(preview_w), "size_allocate", G_CALLBACK(preview_spectrum_draw_cb), "size" );
+		g_signal_connect( G_OBJECT(preview_w), "expose_event", G_CALLBACK(preview_spectrum_expose_cb), NULL );
 	}
-	else
-		preview_spectrum_draw_cb( preview_w, NULL, "redraw" );
+
+	/* Trigger redraw */
+	gtk_widget_queue_draw( preview_w );
 }
 
 
@@ -1213,7 +1226,7 @@ gui_widget_packing( GtkWidget *widget, boolean expand, boolean fill, boolean sta
 {
 	GtkWidget *parent_box_w;
 
-	parent_box_w = widget->parent;
+	parent_box_w = gtk_widget_get_parent( widget );
 	g_assert( GTK_IS_BOX(parent_box_w) );
 
 	gtk_box_set_child_packing( GTK_BOX(parent_box_w), widget, expand, fill, 0, start ? GTK_PACK_START : GTK_PACK_END );
@@ -1367,44 +1380,50 @@ gui_entry_window( const char *title, const char *init_text, void (*ok_callback)(
 }
 
 
-/* Internal callback for the file selection window, called when the
- * OK button is pressed */
+/* Internal callback for the file chooser dialog response */
 static void
-filesel_window_cb( GtkWidget *filesel_w )
+filesel_window_response_cb( GtkDialog *dialog, gint response_id, gpointer data )
 {
 	char *filename;
 	void (*user_callback)( const char *, void * );
-        void *user_callback_data;
+	void *user_callback_data;
 
-	filename = xstrdup( gtk_file_selection_get_filename( GTK_FILE_SELECTION(filesel_w) ) );
-	user_callback = (void (*)( const char *, void * ))g_object_get_data( G_OBJECT(filesel_w), "user_callback" );
-	user_callback_data = g_object_get_data( G_OBJECT(filesel_w), "user_callback_data" );
-	gtk_widget_destroy( filesel_w );
+	if (response_id == GTK_RESPONSE_ACCEPT) {
+		filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+		user_callback = (void (*)( const char *, void * ))g_object_get_data( G_OBJECT(dialog), "user_callback" );
+		user_callback_data = g_object_get_data( G_OBJECT(dialog), "user_callback_data" );
+		gtk_widget_destroy( GTK_WIDGET(dialog) );
 
-	/* Call user callback */
-	(user_callback)( filename, user_callback_data );
+		/* Call user callback */
+		(user_callback)( filename, user_callback_data );
 
-	xfree( filename );
+		g_free( filename );
+	}
+	else {
+		gtk_widget_destroy( GTK_WIDGET(dialog) );
+	}
 }
 
 
-/* Creates a file selection window, with an optional default filename.
+/* Creates a file chooser window, with an optional default filename.
  * OK button activates ok_callback */
 GtkWidget *
 gui_filesel_window( const char *title, const char *init_filename, void (*ok_callback)( ), void *ok_callback_data )
 {
 	GtkWidget *filesel_window_w;
 
-	filesel_window_w = gtk_file_selection_new( title );
+	filesel_window_w = gtk_file_chooser_dialog_new( title, NULL,
+		GTK_FILE_CHOOSER_ACTION_OPEN,
+		GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+		GTK_STOCK_OK, GTK_RESPONSE_ACCEPT,
+		NULL );
 	if (init_filename != NULL)
-		gtk_file_selection_set_filename( GTK_FILE_SELECTION(filesel_window_w), init_filename );
+		gtk_file_chooser_set_filename( GTK_FILE_CHOOSER(filesel_window_w), init_filename );
 	gtk_window_set_position( GTK_WINDOW(filesel_window_w), GTK_WIN_POS_CENTER );
 	g_object_set_data( G_OBJECT(filesel_window_w), "user_callback", (void *)ok_callback );
 	g_object_set_data( G_OBJECT(filesel_window_w), "user_callback_data", ok_callback_data );
-	g_signal_connect_swapped( G_OBJECT(GTK_FILE_SELECTION(filesel_window_w)->ok_button), "clicked", G_CALLBACK(filesel_window_cb), G_OBJECT(filesel_window_w) );
-	g_signal_connect_swapped( G_OBJECT(GTK_FILE_SELECTION(filesel_window_w)->cancel_button), "clicked", G_CALLBACK(gtk_widget_destroy), G_OBJECT(filesel_window_w) );
-	g_signal_connect_swapped( G_OBJECT(GTK_FILE_SELECTION(filesel_window_w)->cancel_button), "delete_event", G_CALLBACK(gtk_widget_destroy), G_OBJECT(filesel_window_w) );
-        /* no gtk_widget_show( ) */
+	g_signal_connect( G_OBJECT(filesel_window_w), "response", G_CALLBACK(filesel_window_response_cb), NULL );
+	/* no gtk_widget_show( ) */
 
 	if (gtk_grab_get_current( ) != NULL)
 		gtk_window_set_modal( GTK_WINDOW(filesel_window_w), TRUE );
@@ -1428,7 +1447,7 @@ gui_window_icon_xpm( GtkWidget *window_w, char **xpm_data )
 /* Helper function for gui_window_modalize( ), called upon the destruction
  * of the modal window */
 static void
-window_unmodalize( GtkObject *unused, GtkWidget *parent_window_w )
+window_unmodalize( GObject *unused, GtkWidget *parent_window_w )
 {
 	gtk_widget_set_sensitive( parent_window_w, TRUE );
 	gui_cursor( parent_window_w, -1 );
@@ -1492,12 +1511,13 @@ gui_check_menu_item_add( GtkWidget *menu_w, const char *label, boolean init_stat
 void
 gui_entry_set_width( GtkWidget *entry_w, const char *str )
 {
-	GtkStyle *style;
+	PangoLayout *layout;
 	int width;
 
-	style = gtk_widget_get_style( entry_w );
-	width = gdk_string_width( style->font, str );
-	gtk_widget_set_usize( entry_w, width + 16, 0 );
+	layout = gtk_widget_create_pango_layout( entry_w, str );
+	pango_layout_get_pixel_size( layout, &width, NULL );
+	g_object_unref( layout );
+	gtk_widget_set_size_request( entry_w, width + 16, -1 );
 }
 
 
@@ -1522,15 +1542,19 @@ gui_spin_button_add( GtkWidget *parent_w, GtkAdjustment *adj )
 int
 gui_string_width( const char *str, GtkWidget *widget )
 {
-	GtkStyle *style;
-	style = gtk_widget_get_style( widget );
-	return gdk_string_width( style->font, str );
+	PangoLayout *layout;
+	int width;
+
+	layout = gtk_widget_create_pango_layout( widget, str );
+	pango_layout_get_pixel_size( layout, &width, NULL );
+	g_object_unref( layout );
+	return width;
 }
 
 
 /* The horizontal value slider widget */
 GtkWidget *
-gui_hscale_add( GtkWidget *parent_w, GtkObject *adjustment )
+gui_hscale_add( GtkWidget *parent_w, GtkAdjustment *adjustment )
 {
 	GtkWidget *hscale_w;
 
@@ -1548,7 +1572,7 @@ gui_hscale_add( GtkWidget *parent_w, GtkObject *adjustment )
 
 /* The vertical value slider widget */
 GtkWidget *
-gui_vscale_add( GtkWidget *parent_w, GtkObject *adjustment )
+gui_vscale_add( GtkWidget *parent_w, GtkAdjustment *adjustment )
 {
 	GtkWidget *vscale_w;
 

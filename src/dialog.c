@@ -113,10 +113,9 @@ dialog_change_root( void )
 	gui_cursor( main_window_w, -1 );
 	gui_update( );
 
+	/* Make it a directory chooser */
+	gtk_file_chooser_set_action( GTK_FILE_CHOOSER(filesel_window_w), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER );
 	gui_window_modalize( filesel_window_w, main_window_w );
-	gtk_file_selection_hide_fileop_buttons( GTK_FILE_SELECTION(filesel_window_w) );
-	/* Disable filesel's file list to make it a directory chooser */
-	gtk_widget_set_sensitive( GTK_FILE_SELECTION(filesel_window_w)->file_list, FALSE );
 
 	gtk_widget_show( filesel_window_w );
 }
@@ -168,18 +167,8 @@ static struct ColorSetupDialog {
 		GtkWidget *old_dateedit_w;
 		GtkWidget *new_dateedit_w;
 
-		/* Menu items in timestamp option menu */
-		GtkWidget *access_omenu_item_w;
-		GtkWidget *modify_omenu_item_w;
-		GtkWidget *attrib_omenu_item_w;
-
 		/* Spectrum preview widget */
 		GtkWidget *spectrum_preview_w;
-
-		/* Menu items in spectrum type option menu */
-		GtkWidget *rainbow_omenu_item_w;
-		GtkWidget *heat_omenu_item_w;
-		GtkWidget *gradient_omenu_item_w;
 
 		/* Color pickers for interpolated spectrum setup */
 		GtkWidget *old_colorpicker_w;
@@ -257,24 +246,14 @@ csdialog_time_edit_cb( GtkWidget *dateedit_w )
 }
 
 
-/* Callback for the "Color by:" timestamp option menu */
+/* Callback for the "Color by:" timestamp combo box */
 static void
-csdialog_time_timestamp_option_menu_cb( GtkWidget *omenu_item_w )
+csdialog_time_timestamp_option_menu_cb( GtkWidget *combo_w )
 {
-	TimeStampType type;
+	int active = gtk_combo_box_get_active( GTK_COMBO_BOX(combo_w) );
 
-	if (omenu_item_w == csdialog.time.access_omenu_item_w)
-		type = TIMESTAMP_ACCESS;
-	else if (omenu_item_w == csdialog.time.modify_omenu_item_w)
-		type = TIMESTAMP_MODIFY;
-	else if (omenu_item_w == csdialog.time.attrib_omenu_item_w)
-		type = TIMESTAMP_ATTRIB;
-	else {
-		g_assert_not_reached( );
-		return;
-	}
-
-	csdialog.color_config.by_timestamp.timestamp_type = type;
+	/* Combo box indices match TimeStampType enum values */
+	csdialog.color_config.by_timestamp.timestamp_type = (TimeStampType)active;
 }
 
 
@@ -327,22 +306,12 @@ csdialog_time_color_picker_set_access( boolean enabled )
 }
 
 
-/* Callback for the spectrum type option menu */
+/* Callback for the spectrum type combo box */
 static void
-csdialog_time_spectrum_option_menu_cb( GtkWidget *omenu_item_w )
+csdialog_time_spectrum_option_menu_cb( GtkWidget *combo_w )
 {
-	SpectrumType type;
-
-	if (omenu_item_w == csdialog.time.rainbow_omenu_item_w)
-		type = SPECTRUM_RAINBOW;
-	else if (omenu_item_w == csdialog.time.heat_omenu_item_w)
-		type = SPECTRUM_HEAT;
-	else if (omenu_item_w == csdialog.time.gradient_omenu_item_w)
-		type = SPECTRUM_GRADIENT;
-	else {
-		g_assert_not_reached( );
-		return;
-	}
+	int active = gtk_combo_box_get_active( GTK_COMBO_BOX(combo_w) );
+	SpectrumType type = (SpectrumType)active;
 
 	/* Set new spectrum type and draw it */
 	csdialog.color_config.by_timestamp.spectrum_type = type;
@@ -964,10 +933,10 @@ dialog_color_setup( void )
 	/* New date edit widget */
 	csdialog.time.new_dateedit_w = gui_dateedit_add( NULL, csdialog.color_config.by_timestamp.new_time, csdialog_time_edit_cb, NULL );
         gui_table_attach( table_w, csdialog.time.new_dateedit_w, 1, 2, 1, 2 );
-	/* Timestamp selection option menu */
-	csdialog.time.access_omenu_item_w = gui_option_menu_item( _("Time of last access"), csdialog_time_timestamp_option_menu_cb, NULL );
-	csdialog.time.modify_omenu_item_w = gui_option_menu_item( _("Time of last modification"), csdialog_time_timestamp_option_menu_cb, NULL );
-	csdialog.time.attrib_omenu_item_w = gui_option_menu_item( _("Time of last attribute change"), csdialog_time_timestamp_option_menu_cb, NULL );
+	/* Timestamp selection combo box */
+	gui_option_menu_item( _("Time of last access"), csdialog_time_timestamp_option_menu_cb, NULL );
+	gui_option_menu_item( _("Time of last modification"), csdialog_time_timestamp_option_menu_cb, NULL );
+	gui_option_menu_item( _("Time of last attribute change"), csdialog_time_timestamp_option_menu_cb, NULL );
 	optmenu_w = gui_option_menu_add( NULL, csdialog.color_config.by_timestamp.timestamp_type );
         gui_table_attach( table_w, optmenu_w, 1, 2, 2, 3 );
 
@@ -987,9 +956,9 @@ dialog_color_setup( void )
 	gui_label_add( hbox_w, _("Older") );
 
 	/* Spectrum type selection */
-	csdialog.time.rainbow_omenu_item_w = gui_option_menu_item( _("Rainbow"), csdialog_time_spectrum_option_menu_cb, NULL );
-	csdialog.time.heat_omenu_item_w = gui_option_menu_item( _("Heat"), csdialog_time_spectrum_option_menu_cb, NULL );
-	csdialog.time.gradient_omenu_item_w = gui_option_menu_item( _("Gradient"), csdialog_time_spectrum_option_menu_cb, NULL );
+	gui_option_menu_item( _("Rainbow"), csdialog_time_spectrum_option_menu_cb, NULL );
+	gui_option_menu_item( _("Heat"), csdialog_time_spectrum_option_menu_cb, NULL );
+	gui_option_menu_item( _("Gradient"), csdialog_time_spectrum_option_menu_cb, NULL );
 	optmenu_w = gui_option_menu_add( hbox_w, csdialog.color_config.by_timestamp.spectrum_type );
 	gui_widget_packing( optmenu_w, EXPAND, NO_FILL, AT_START );
 

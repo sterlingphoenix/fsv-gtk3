@@ -42,6 +42,11 @@
  * scrollable area */
 static boolean scrollbars_colexp_adjust;
 
+/* Reentrancy guard: TRUE while colexp() is executing at depth 0.
+ * gui_update() can process events that trigger tree expand/collapse
+ * signals, which would re-enter colexp() */
+static boolean colexp_in_progress = FALSE;
+
 
 /* This returns the number of collapsed directory levels above the
  * given directory */
@@ -129,6 +134,13 @@ colexp( GNode *dnode, ColExpMesg mesg )
 	g_assert( NODE_IS_DIR(dnode) );
 
 	if (depth == 0) {
+		/* Guard against reentrancy: gui_update() below processes
+		 * pending GTK events, which can fire tree expand/collapse
+		 * signals that would re-enter colexp() */
+		if (colexp_in_progress)
+			return;
+		colexp_in_progress = TRUE;
+
 #ifdef DEBUG
 		if (mesg != COLEXP_EXPAND_ANY) {
 			/* All ancestor directories must be expanded */
@@ -186,6 +198,20 @@ colexp( GNode *dnode, ColExpMesg mesg )
 			break;
 
                         SWITCH_FAIL
+		}
+
+		/* Fast path for large recursive expansions in TreeV.
+		 * Individual morph animations for N directories cause
+		 * O(N^2) setup cost and O(N) per-frame callback overhead.
+		 * Instead, expand all deployments instantly and rebuild
+		 * geometry in a single pass (same path as mode-switch) */
+		if (mesg == COLEXP_EXPAND_RECURSIVE
+		    && globals.fsv_mode == FSV_TREEV
+		    && DIR_NODE_DESC(dnode)->subtree.counts[NODE_DIRECTORY] > 0) {
+			geometry_treev_reinit( );
+			camera_look_at_full( globals.current_node, MORPH_INV_QUADRATIC, TREEV_COLEXP_TIME );
+			colexp_in_progress = FALSE;
+			return;
 		}
 	}
 
@@ -318,6 +344,8 @@ colexp( GNode *dnode, ColExpMesg mesg )
 		scrollbars_colexp_adjust = FALSE;
 		if (curnode_is_ancestor && (globals.fsv_mode == FSV_TREEV))
 			scrollbars_colexp_adjust = TRUE;
+
+		colexp_in_progress = FALSE;
 	}
 }
 

@@ -57,7 +57,6 @@ on_file_change_root_activate( GtkMenuItem *menuitem, gpointer user_data )
 void
 on_file_save_settings_activate( GtkMenuItem *menuitem, gpointer user_data )
 {
-	g_message( "on_file_save_settings_activate: called" );
 	fsv_write_config( );
 }
 

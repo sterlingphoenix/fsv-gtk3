@@ -1741,27 +1741,40 @@ treev_arrange( boolean initial_arrange )
 
 	treev_arrange_recursive( globals.fstree, treev_core_radius, initial_arrange );
 
-	/* Check that the tree's total arc width is within bounds */
-	for (;;) {
-		if (TREEV_GEOM_PARAMS(globals.fstree)->platform.subtree_arc_width > TREEV_MAX_ARC_WIDTH) {
-			/* Grow core radius */
-			treev_core_radius *= TREEV_CORE_GROW_FACTOR;
-			treev_arrange_recursive( globals.fstree, treev_core_radius, TRUE );
-			resized = TRUE;
+	/* Check that the tree's total arc width is within bounds.
+	 * Limit iterations to prevent infinite oscillation when arc
+	 * width bounces between the min/max boundaries */
+	{
+		int resize_iters = 0;
+		double prev_arc_width = -1.0;
+		for (;;) {
+			double arc_width = TREEV_GEOM_PARAMS(globals.fstree)->platform.subtree_arc_width;
+			if (arc_width > TREEV_MAX_ARC_WIDTH) {
+				/* Grow core radius */
+				treev_core_radius *= TREEV_CORE_GROW_FACTOR;
+				treev_arrange_recursive( globals.fstree, treev_core_radius, TRUE );
+				resized = TRUE;
+			}
+			else if ((arc_width < TREEV_MIN_ARC_WIDTH) && (TREEV_GEOM_PARAMS(globals.fstree)->platform.depth > TREEV_MIN_CORE_RADIUS)) {
+				/* Shrink core radius */
+				treev_core_radius = MAX(TREEV_MIN_CORE_RADIUS, treev_core_radius / TREEV_CORE_GROW_FACTOR);
+				treev_arrange_recursive( globals.fstree, treev_core_radius, TRUE );
+				resized = TRUE;
+			}
+			else
+				break;
+			/* Stop if arc width is oscillating or we've iterated too many times */
+			if (++resize_iters > 32 || arc_width == prev_arc_width)
+				break;
+			prev_arc_width = arc_width;
 		}
-		else if ((TREEV_GEOM_PARAMS(globals.fstree)->platform.subtree_arc_width < TREEV_MIN_ARC_WIDTH) && (TREEV_GEOM_PARAMS(globals.fstree)->platform.depth > TREEV_MIN_CORE_RADIUS)) {
-			/* Shrink core radius */
-			treev_core_radius = MAX(TREEV_MIN_CORE_RADIUS, treev_core_radius / TREEV_CORE_GROW_FACTOR);
-			treev_arrange_recursive( globals.fstree, treev_core_radius, TRUE );
-			resized = TRUE;
-		}
-		else
-			break;
 	}
 
-	if (resized && camera_moving( )) {
+	if (resized && initial_arrange && camera_moving( )) {
 		/* Camera's destination has moved, so it will need a
-		 * flight path correction */
+		 * flight path correction. Only do this on initial arrange,
+		 * not during per-frame rearranges from colexp morphs
+		 * (colexp handles camera positioning itself) */
 		camera_pan_break( );
 		camera_look_at_full( globals.current_node, MORPH_INV_QUADRATIC, -1.0 );
 	}
@@ -1841,6 +1854,18 @@ treev_init( void )
 	treev_cursor_prev_c1.r *= 1.125;
 	treev_cursor_prev_c1.theta += TREEV_GEOM_PARAMS(root_dnode)->platform.arc_width;
 	treev_cursor_prev_c1.z = TREEV_GEOM_PARAMS(root_dnode)->platform.height;
+}
+
+
+/* Reinitializes TreeV geometry from the current dirtree expansion state.
+ * Used after instant (non-animated) expansion to rebuild all platforms
+ * and arrangement in a single O(N) pass */
+void
+geometry_treev_reinit( void )
+{
+	treev_init_recursive( globals.fstree );
+	treev_arrange( TRUE );
+	queue_uncached_draw( );
 }
 
 
