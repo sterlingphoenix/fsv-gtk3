@@ -1,27 +1,32 @@
 ## FSV
 
-[![travis ci](https://travis-ci.org/mcuelenaere/fsv.svg?branch=master)](https://travis-ci.org/mcuelenaere/fsv)
+NOTE: this project **is** not actively maintained! However, it is a stepping stone to a complete modernisation. 
 
-NOTE: this project is **not** actively maintained.
+This is the fork that updates from gtk1 to gtk2. This enables building on a modern Linux system (test case was Ubuntu 25.10).
 
-This repo is a fork of [fsv](http://fsv.sourceforge.net/), with some patches on top to align it more to the current state of affairs.
+
+This repo is a fork of [fsv](https://github.com/mcuelenaere/fsv), which is itself a fork of [fsv](http://fsv.sourceforge.net/).
+
 The original author is [Daniel Richard G.](http://fox.mit.edu/skunk/), a former student of Computer Science at the MIT.
+
+The version I forked form includes patches by (apparently) Maurus Cuelenaere. 
+
+I did use generative ai to help me get this done in a timely manner. Also I was curious. 
 
 **About fsv**
 
-> fsv (pronounced eff-ess-vee) is a file system visualizer in cyberspace. It lays out files and directories in three dimensions, geometrically representing the file system hierarchy to allow visual overview and analysis. fsv can visualize a modest home directory, a workstation's hard drive, or any arbitrarily large collection of files, limited only by the host computer's memory and graphics hardware.
+> fsv (pronounced eff-ess-vee) is a 3D file system visualizer. It lays out files and directories in three dimensions, geometrically representing the file system hierarchy to allow visual overview and analysis. fsv can visualize a modest home directory, a workstation's hard drive, or any arbitrarily large collection of files, limited only by the host computer's memory and graphics hardware. Note that this was originally written in the 1990s when 9.1GB harddrvies were considered "large". It still works, but some of the visualisations can be hard to grasp. 
 
-Its ancestor, SGI's `fsn` (pronounced "fusion") originated on IRIX and was prominently featured in Jurassic Park: ["It's a Unix system!"](https://www.youtube.com/watch?v=3HjOjvu6oKA). 
+Its ancestor, SGI's `fsn` (pronounced "fusion") originated on IRIX and was prominently featured in Jurassic Park. 
 
-[Screenshots](http://fsv.sourceforge.net/screenshots/) of the original clone are still available.
-
-Useful info and screenshots of the original SGI IRIX implementation are available on [siliconbunny](http://www.siliconbunny.com/fsn-the-irix-3d-file-system-tool-from-jurassic-park/).
+~Useful info and screenshots of the original SGI IRIX implementation are available on [siliconbunny](http://www.siliconbunny.com/fsn-the-irix-3d-file-system-tool-from-jurassic-park/).~ Apparently not.
 
 **Install**
 
-1. Clone the repository
-2. Make a configure script: `./autogen.sh`
-3. Install dependencies (Ubuntu): `sudo apt-get install libgtkgl2.0-dev libgl1-mesa-dev libglu1-mesa-dev`
+
+1. `sudo apt-get install libgtk2.0-dev libgtkgl2.0-dev libgl1-mesa-dev libglu1-mesa-dev`
+2. Clone the repository
+3. Run `./autogen.sh`
 4. Do the install dance:
     - `./configure`
     - `make`
