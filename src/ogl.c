@@ -4,6 +4,7 @@
 
 /* fsv - 3D File System Visualizer
  * Copyright (C)1999 Daniel Richard G. <skunk@mit.edu>
+ * Updates (c) 2026 sterlingphoenix <fsv@freakzilla.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

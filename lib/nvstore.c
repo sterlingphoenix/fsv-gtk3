@@ -3,6 +3,7 @@
 /* Nonvolatile storage library */
 
 /* Copyright (C)1999 Daniel Richard G. <skunk@mit.edu>
+ * Updates (c) 2026 sterlingphoenix <fsv@freakzilla.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
