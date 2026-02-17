@@ -31,3 +31,4 @@ Its ancestor, SGI's `fsn` (pronounced "fusion") originated on IRIX and was promi
     - `./configure`
     - `make`
     - `sudo make install`
+
