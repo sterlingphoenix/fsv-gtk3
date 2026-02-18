@@ -56,14 +56,16 @@ When <emphasis>fsv</emphasis> is invoked with the <option>--help</option> option
 <prompt>bash$</prompt> <userinput>fsv --help</userinput>
 
 fsv - 3D File System Visualizer
-      Version 0.9
+      Version 1.0
 Copyright (C)1999 Daniel Richard G. &lt;skunk@mit.edu&gt;
+Updates (c) sterlingphoenix &lt;fsv@freakzilla.com&gt;
 
 Usage: fsv [rootdir] [options]
   rootdir      Root directory for visualization
                - (defaults to current directory)
-  --mapv       Start in MapV mode (default)
-  --treev      Start in TreeV mode
+  --mapv       Start in Map visualisation mode (default)
+  --discv      Start in Disc visualisation mode
+  --treev      Start in Tree visualisation mode
   --help       Print this help and exit
 
 </screen></para>

@@ -75,13 +75,13 @@ static struct option cli_opts[] = {
 static const char usage_summary[] = __("\n"
     "fsv - 3D File System Visualizer\n"
     "      Version " VERSION "\n"
-    "Copyright (C)1999 Daniel Richard G. <skunk@mit.edu>\n"
     "\n"
     "Usage: %s [rootdir] [options]\n"
     "  rootdir      Root directory for visualization\n"
     "               (defaults to current directory)\n"
-    "  --mapv       Start in MapV mode (default)\n"
-    "  --treev      Start in TreeV mode\n"
+    "  --mapv       Start in Map Visualisation mode (default)\n"
+    "  --discv      Start in Disc Visualisation mode\n"
+    "  --treev      Start in Tree Visualisation mode\n"
     "  --help       Print this help and exit\n"
     "\n");
 

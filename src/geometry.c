@@ -3067,7 +3067,7 @@ splash_draw( void )
 	glColor3f( 0.5, 0.5, 0.5 );
 	text_pos.y = bottom_y + 0.0117;
 	text_dims.y = 0.0234;
-	text_draw_straight( "Copyright (C)1999 Daniel Richard G. <skunk@mit.edu>", &text_pos, &text_dims );
+	/*text_draw_straight( "Copyright (C)1999 Daniel Richard G. <skunk@mit.edu>, udates (c) 2026 sterlingphoenix <fsv@freakzilla.com>", &text_pos, &text_dims );*/
 
 	text_post( );
 

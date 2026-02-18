@@ -2,3 +2,10 @@
 ----------------------
 
 * Initial release.
+
+1.0 (18 February 2026)
+----------------------
+
+* Update to GTK2.
+* Add back all stubs that weren't working yet. 
+* Some navigation tweaks.
