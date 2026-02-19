@@ -69,6 +69,30 @@ collapsed_depth( GNode *dnode )
 }
 
 
+/* Returns the maximum directory depth of a subtree (regardless of
+ * expansion state). Used to compute animation timing for expand-all */
+static int
+max_dir_depth( GNode *dnode )
+{
+	GNode *node;
+	int max_depth = 0;
+	int child_depth;
+
+	node = dnode->children;
+	while (node != NULL) {
+		if (NODE_IS_DIR(node)) {
+			child_depth = 1 + max_dir_depth( node );
+			max_depth = MAX(max_depth, child_depth);
+		}
+		else
+			break;
+		node = node->next;
+	}
+
+	return max_depth;
+}
+
+
 /* This returns the maximum depth to which a certain directory's
  * subtree has been expanded. A return value of 0 is typical; 1 or
  * more means a recursive collapse would be necessary if collapsing
@@ -201,16 +225,31 @@ colexp( GNode *dnode, ColExpMesg mesg )
                         SWITCH_FAIL
 		}
 
-		/* Fast path for large recursive expansions in TreeV.
-		 * Individual morph animations for N directories cause
-		 * O(N^2) setup cost and O(N) per-frame callback overhead.
-		 * Instead, expand all deployments instantly and rebuild
-		 * geometry in a single pass (same path as mode-switch) */
+		/* TreeV expand-all uses an instant geometry rebuild
+		 * rather than per-directory morph animations.
+		 * Per-directory morphs cause the treev_arrange resize
+		 * loop to shift geometry under the camera mid-animation,
+		 * resulting in the camera losing its target. Instead,
+		 * rebuild all geometry in one pass and animate only
+		 * the camera pan, timed to the subtree depth */
 		if (mesg == COLEXP_EXPAND_RECURSIVE
 		    && globals.fsv_mode == FSV_TREEV
 		    && DIR_NODE_DESC(dnode)->subtree.counts[NODE_DIRECTORY] > 0) {
+			double old_r0, delta_r;
+			int tree_depth = max_dir_depth( dnode );
+			double pan_time = (double)(tree_depth + 1) * colexp_time;
+			/* Save root platform radius before reinit so we
+			 * can track how much the geometry shifted outward
+			 * (treev_core_radius grows but never shrinks) */
+			old_r0 = geometry_treev_platform_r0( root_dnode );
 			geometry_treev_reinit( );
-			camera_look_at_full( globals.current_node, MORPH_INV_QUADRATIC, TREEV_COLEXP_TIME );
+			/* Shift camera target radially to track the
+			 * geometry movement, keeping the camera in the
+			 * same relative position on the first frame */
+			delta_r = geometry_treev_platform_r0( root_dnode ) - old_r0;
+			if (delta_r > EPSILON)
+				TREEV_CAMERA(camera)->target.r += delta_r;
+			camera_look_at_full( globals.current_node, MORPH_INV_QUADRATIC, pan_time );
 			colexp_in_progress = FALSE;
 			return;
 		}
