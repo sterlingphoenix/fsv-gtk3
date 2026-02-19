@@ -1072,50 +1072,6 @@ dialog_color_setup( void )
 }
 
 
-/* Help -> Contents... */
-void
-dialog_help( void )
-{
-	static double t;
-	GtkWidget *window_w;
-	GtkWidget *frame_w;
-	GtkWidget *hbox_w;
-	char location[] = "file://localhost" DOCDIR "/fsv.html";
-	char cmdbuf[2048];
-
-	/* Browser may take a few seconds to start up... */
-	gui_cursor( main_window_w, GDK_WATCH );
-	gui_update( );
-
-	/* Create message window to acknowledge action */
-	window_w = gui_dialog_window( _("Help"), NULL );
-	gtk_container_set_border_width( GTK_CONTAINER(window_w), 5 );
-	frame_w = gui_frame_add( window_w, NULL );
-	hbox_w = gui_hbox_add( frame_w, 10 );
-	gui_label_add( hbox_w, _("Launching help browser . . .") );
-	gtk_widget_show( window_w );
-	/* and time-bomb it */
-	morph_finish( &t );
-	t = 0.0;
-	morph_full( &t, MORPH_LINEAR, 1.0, 4.0, NULL, transient_end_cb, window_w );
-
-	if (xfork( )) {
-		/* Browser startup command */
-		sprintf( cmdbuf,
-		    "netscape -noraise -remote \"openURL(%s,new-window)\" > /dev/null 2>&1 || "
-		    "netscape -no-about-splash -dont-save-geometry-prefs %s > /dev/null 2>&1 || "
-		    "xterm -title \"fsv help\" -e lynx %s > /dev/null 2>&1",
-		    location, location, location );
-
-		/* Execute command */
-		system( cmdbuf );
-
-		/* End subprocess */
-		_exit( 0 );
-	}
-}
-
-
 /* Callback for the "Look at target node" button on the "Target" page
  * of the Properties dialog for symlinks */
 static void

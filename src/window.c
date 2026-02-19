@@ -163,9 +163,7 @@ window_init( FsvMode fsv_mode )
 	menu_w = gui_menu_add( menu_bar_w, _("Help") );
 	gtk_menu_item_set_right_justified( GTK_MENU_ITEM(GTK_MENU(menu_w)->parent_menu_item), TRUE );
 	/* Help menu items */
-	gui_menu_item_add( menu_w, _("Contents..."), on_help_contents_activate, NULL );
-	gui_separator_add( menu_w );
-	gui_menu_item_add( menu_w, _("About fsv..."), on_help_about_fsv_activate, NULL );
+	gui_menu_item_add( menu_w, _("About"), on_help_about_fsv_activate, NULL );
 
 	/* Done with the menu bar */
 

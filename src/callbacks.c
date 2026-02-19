@@ -135,14 +135,6 @@ on_color_setup_activate( GtkMenuItem *menuitem, gpointer user_data )
 }
 
 
-/* Help -> Contents... */
-void
-on_help_contents_activate( GtkMenuItem *menuitem, gpointer user_data )
-{
-	dialog_help( );
-}
-
-
 /* Help -> About fsv... */
 void
 on_help_about_fsv_activate( GtkMenuItem *menuitem, gpointer user_data )

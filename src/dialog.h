@@ -34,7 +34,6 @@ void context_menu( GNode *node, GdkEventButton *ev_button );
 #endif
 void dialog_change_root( void );
 void dialog_color_setup( void );
-void dialog_help( void );
 
 
 /* end dialog.h */

@@ -8,7 +8,6 @@ endif
 
 AM_CPPFLAGS = \
 	-DLOCALEDIR=\"$(localedir)\" \
-	-DDOCDIR=\"$(docdir)\" \
 	-I$(top_srcdir)/lib \
 	$(DEBUG_CFLAGS) \
 	@GTK_CFLAGS@ \

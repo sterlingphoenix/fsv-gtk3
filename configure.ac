@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([fsv], [1.0])
+AC_INIT([fsv], [1.01])
 AC_CONFIG_SRCDIR([src/fsv.c])
 AC_CONFIG_HEADERS([config.h])
 
@@ -55,16 +55,6 @@ fi
 localedir="none"
 AC_SUBST([localedir])
 
-# Documentation directory
-AC_ARG_WITH([doc-dir],
-  [AS_HELP_STRING([--with-doc-dir=DIR], [install documentation files in DIR [DATADIR/fsv]])])
-if test -n "$with_doc_dir" ; then
-	docdir=$with_doc_dir
-else
-	docdir=${datadir}/fsv
-fi
-AC_SUBST([docdir])
-
 # GTK+ 2.0 libraries
 PKG_CHECK_MODULES([GTK], [gtk+-2.0])
 PKG_CHECK_MODULES([GLIB], [glib-2.0])
@@ -111,7 +101,6 @@ fi
 AC_CONFIG_FILES([
 	Makefile
 	debug/Makefile
-	doc/Makefile
 	lib/Makefile
 	src/Makefile
 ])

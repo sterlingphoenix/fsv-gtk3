@@ -753,7 +753,6 @@ enable_option_checking
 enable_silent_rules
 enable_dependency_tracking
 enable_debug
-with_doc_dir
 with_GL_prefix
 '
       ac_precious_vars='build_alias
@@ -1408,7 +1407,6 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-doc-dir=DIR      install documentation files in DIR [DATADIR/fsv]
   --with-GL-prefix=PFX    Prefix where GL is installed (optional)
 
 Some influential environment variables:
@@ -5817,21 +5815,6 @@ fi
 localedir="none"
 
 
-# Documentation directory
-
-# Check whether --with-doc-dir was given.
-if test ${with_doc_dir+y}
-then :
-  withval=$with_doc_dir;
-fi
-
-if test -n "$with_doc_dir" ; then
-	docdir=$with_doc_dir
-else
-	docdir=${datadir}/fsv
-fi
-
-
 # GTK+ 2.0 libraries
 
 
@@ -6386,7 +6369,7 @@ printf "%s\n" "#define FILE_COMMAND \"$FILE_CMD %s\"" >>confdefs.h
 fi
 
 # That's a wrap!
-ac_config_files="$ac_config_files Makefile debug/Makefile doc/Makefile lib/Makefile src/Makefile"
+ac_config_files="$ac_config_files Makefile debug/Makefile lib/Makefile src/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -7135,7 +7118,6 @@ do
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "debug/Makefile") CONFIG_FILES="$CONFIG_FILES debug/Makefile" ;;
-    "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
 
