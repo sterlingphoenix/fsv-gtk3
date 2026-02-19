@@ -21,6 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+/* TODO: Replace this with a regular ol' popup window. */
 
 #include "common.h"
 #include "about.h"
@@ -158,24 +159,6 @@ draw_text( void )
 	tdims.y = 15.0;
 	tpos.y = 40.0 * q - 95.0; /* -55 */
 	text_draw_straight( "Version " VERSION, &tpos, &tdims );
-
-	tdims.y = 12.0;
-	tpos.y = 100.0 * q - 180.0; /* -80 */
-	glColor3f( 0.5, 0.5, 0.5 );
-	text_draw_straight( "Copyright (C)1999 by Daniel Richard G.", &tpos, &tdims );
-
-	tpos.y = 140.0 * q - 235.0; /* -95 */
-	text_draw_straight( "<skunk@mit.edu>", &tpos, &tdims );
-
-	/* Finally, fade in the home page URL */
-	if (about_part > 0.75) {
-		tpos.y = -115.0;
-		p = INTERVAL_PART(about_part, 0.75, 1.0);
-		q = SQR(SQR(p));
-		glColor3f( q, q, 0.0 );
-		text_draw_straight( "http://fox.mit.edu/skunk/soft/fsv/", &tpos, &tdims );
-		text_draw_straight( "__________________________________", &tpos, &tdims );
-	}
 
 	text_post( );
 
