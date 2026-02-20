@@ -448,9 +448,12 @@ animation_loop( void )
 void
 redraw( void )
 {
-	/* Ensure that animation loop is active */
+	/* Ensure that animation loop is active.
+	 * Use G_PRIORITY_DEFAULT_IDLE rather than G_PRIORITY_LOW so the
+	 * animation loop isn't starved by GTK 3's frame clock and other
+	 * internal events that run at higher priorities. */
 	if (!animation_active)
-		g_idle_add_full( G_PRIORITY_LOW, (GSourceFunc)animation_loop, NULL, NULL );
+		g_idle_add_full( G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)animation_loop, NULL, NULL );
 
 	animation_active = TRUE;
 	globals.need_redraw = TRUE;

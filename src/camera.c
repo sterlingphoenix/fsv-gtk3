@@ -1414,7 +1414,10 @@ camera_dolly( double dk )
 	/* Camera is under user control */
 	camera->manual_control = TRUE;
 
-	camera_update_scrollbars( TRUE );
+	/* Soft scrollbar update: scroll events are not compressed like
+	 * motion events, so hard updates here cause stutter as each
+	 * wheel notch forces a synchronous scrollbar widget redraw */
+	camera_update_scrollbars( FALSE );
 	redraw( );
 }
 
