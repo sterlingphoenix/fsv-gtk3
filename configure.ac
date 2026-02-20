@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([fsv], [2.20])
+AC_INIT([fsv], [2.30])
 AC_CONFIG_SRCDIR([src/fsv.c])
 AC_CONFIG_HEADERS([config.h])
 

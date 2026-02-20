@@ -21,8 +21,17 @@ Its ancestor, SGI's `fsn` (pronounced "fusion") originated on IRIX and was promi
 
 ~Useful info and screenshots of the original SGI IRIX implementation are available on [siliconbunny](http://www.siliconbunny.com/fsn-the-irix-3d-file-system-tool-from-jurassic-park/).~ Apparently not.
 
-**Install**
+**Requirements**
 
+- GTK 3.16 or later (for GtkGLArea)
+- libepoxy (for OpenGL function loading)
+- OpenGL compatibility profile (legacy fixed-function pipeline)
+
+The app sets `GDK_GL=legacy` automatically to request a GL compatibility profile context.
+This works on NVIDIA and most Mesa drivers. On Wayland with some Mesa configurations,
+you may need to fall back to X11: `GDK_BACKEND=x11 fsv /path`.
+
+**Install**
 
 1. `sudo apt-get install libgtk-3-dev libepoxy-dev`
 2. Clone the repository

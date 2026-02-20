@@ -205,7 +205,7 @@ gui_box_set_packing( GtkWidget *box_w, boolean expand, boolean fill, boolean sta
 
 /* The standard button widget */
 GtkWidget *
-gui_button_add( GtkWidget *parent_w, const char *label, void (*callback)( ), void *callback_data )
+gui_button_add( GtkWidget *parent_w, const char *label, GCallback callback, void *callback_data )
 {
 	GtkWidget *button_w;
 
@@ -221,7 +221,7 @@ gui_button_add( GtkWidget *parent_w, const char *label, void (*callback)( ), voi
 
 /* Creates a button with a pixmap prepended to the label */
 GtkWidget *
-gui_button_with_pixmap_xpm_add( GtkWidget *parent_w, char **xpm_data, const char *label, void (*callback)( ), void *callback_data )
+gui_button_with_pixmap_xpm_add( GtkWidget *parent_w, char **xpm_data, const char *label, GCallback callback, void *callback_data )
 {
 	GtkWidget *button_w;
 	GtkWidget *hbox_w, *hbox2_w;
@@ -244,7 +244,7 @@ gui_button_with_pixmap_xpm_add( GtkWidget *parent_w, char **xpm_data, const char
 
 /* The toggle button widget */
 GtkWidget *
-gui_toggle_button_add( GtkWidget *parent_w, const char *label, boolean active, void (*callback)( ), void *callback_data )
+gui_toggle_button_add( GtkWidget *parent_w, const char *label, boolean active, GCallback callback, void *callback_data )
 {
 	GtkWidget *tbutton_w;
 
@@ -422,7 +422,7 @@ color_picker_cb( GtkColorButton *colorbutton, gpointer data )
  * Changing the color (i.e. pressing OK in the color selection dialog)
  * activates the given callback */
 GtkWidget *
-gui_colorpicker_add( GtkWidget *parent_w, RGBcolor *init_color, const char *title, void (*callback)( ), void *callback_data )
+gui_colorpicker_add( GtkWidget *parent_w, RGBcolor *init_color, const char *title, GCallback callback, void *callback_data )
 {
 	GtkWidget *colorbutton_w;
 
@@ -595,7 +595,7 @@ gui_cursor( GtkWidget *widget, int glyph )
 /* The date edit widget (imported from Gnomeland). The given callback is
  * called whenever the date/time is changed */
 GtkWidget *
-gui_dateedit_add( GtkWidget *parent_w, time_t the_time, void (*callback)( ), void *callback_data )
+gui_dateedit_add( GtkWidget *parent_w, time_t the_time, GCallback callback, void *callback_data )
 {
 	GtkWidget *dateedit_w;
 
@@ -627,7 +627,7 @@ gui_dateedit_set_time( GtkWidget *dateedit_w, time_t the_time )
 
 /* The entry (text input) widget */
 GtkWidget *
-gui_entry_add( GtkWidget *parent_w, const char *init_text, void (*callback)( ), void *callback_data )
+gui_entry_add( GtkWidget *parent_w, const char *init_text, GCallback callback, void *callback_data )
 {
 	GtkWidget *entry_w;
 
@@ -799,7 +799,7 @@ gui_menu_add( GtkWidget *parent_menu_w, const char *label )
 
 /* Adds a menu item to a menu */
 GtkWidget *
-gui_menu_item_add( GtkWidget *menu_w, const char *label, void (*callback)( ), void *callback_data )
+gui_menu_item_add( GtkWidget *menu_w, const char *label, GCallback callback, void *callback_data )
 {
 	GtkWidget *menu_item_w;
 	menu_item_w = gtk_menu_item_new_with_label( label );
@@ -828,7 +828,7 @@ gui_radio_menu_begin( int init_selected )
  * in the group will be "toggled" off. The callback should either watch
  * for this, or do nothing if the widget's "active" flag is FALSE */
 GtkWidget *
-gui_radio_menu_item_add( GtkWidget *menu_w, const char *label, void (*callback)( ), void *callback_data )
+gui_radio_menu_item_add( GtkWidget *menu_w, const char *label, GCallback callback, void *callback_data )
 {
 	static GSList *radio_group;
 	static int init_selected;
@@ -859,7 +859,7 @@ gui_radio_menu_item_add( GtkWidget *menu_w, const char *label, void (*callback)(
 /* Storage for option menu items being built */
 struct OptionMenuItem {
 	const char *label;
-	void (*callback)( );
+	GCallback callback;
 	void *callback_data;
 };
 static struct OptionMenuItem optmenu_items[16];
@@ -916,7 +916,7 @@ gui_option_menu_add( GtkWidget *parent_w, int init_selected )
 /* Combo box item definition. Call this once for each menu item, and then call
  * gui_option_menu_add( ) to produce the finished widget */
 GtkWidget *
-gui_option_menu_item( const char *label, void (*callback)( ), void *callback_data )
+gui_option_menu_item( const char *label, GCallback callback, void *callback_data )
 {
 	g_assert( optmenu_item_count < 16 );
 	optmenu_items[optmenu_item_count].label = label;
@@ -1251,7 +1251,7 @@ colorsel_window_response_cb( GtkDialog *dialog, gint response_id, gpointer user_
 
 /* Creates a color chooser window. OK button activates ok_callback */
 GtkWidget *
-gui_colorsel_window( const char *title, RGBcolor *init_color, void (*ok_callback)( ), void *ok_callback_data )
+gui_colorsel_window( const char *title, RGBcolor *init_color, GCallback ok_callback, void *ok_callback_data )
 {
 	GtkWidget *colorsel_window_w;
 	GdkRGBA rgba;
@@ -1277,7 +1277,7 @@ gui_colorsel_window( const char *title, RGBcolor *init_color, void (*ok_callback
 /* Creates a base dialog window. close_callback is called when the
  * window is destroyed */
 GtkWidget *
-gui_dialog_window( const char *title, void (*close_callback)( ) )
+gui_dialog_window( const char *title, GCallback close_callback )
 {
 	GtkWidget *window_w;
 
@@ -1320,7 +1320,7 @@ entry_window_cb( GtkWidget *unused, GtkWidget *entry_window_w )
 /* Creates a one-line text-entry window, initialized with the given text
  * string. OK button activates ok_callback */
 GtkWidget *
-gui_entry_window( const char *title, const char *init_text, void (*ok_callback)( ), void *ok_callback_data )
+gui_entry_window( const char *title, const char *init_text, GCallback ok_callback, void *ok_callback_data )
 {
 	GtkWidget *entry_window_w;
 	GtkWidget *frame_w;
@@ -1349,7 +1349,7 @@ gui_entry_window( const char *title, const char *init_text, void (*ok_callback)(
 	vbox_w = gui_vbox_add( frame_w, 10 );
 
         /* Text entry widget */
-	entry_w = gui_entry_add( vbox_w, init_text, entry_window_cb, entry_window_w );
+	entry_w = gui_entry_add( vbox_w, init_text, G_CALLBACK(entry_window_cb), entry_window_w );
 	g_object_set_data( G_OBJECT(entry_window_w), "entry_w", entry_w );
 
 	/* Horizontal box for buttons */
@@ -1358,7 +1358,7 @@ gui_entry_window( const char *title, const char *init_text, void (*ok_callback)(
 	gui_box_set_packing( hbox_w, EXPAND, FILL, AT_START );
 
 	/* OK/Cancel buttons */
-	gui_button_add( hbox_w, _("OK"), entry_window_cb, entry_window_w );
+	gui_button_add( hbox_w, _("OK"), G_CALLBACK(entry_window_cb), entry_window_w );
 	vbox_w = gui_vbox_add( hbox_w, 0 ); /* spacer */
 	button_w = gui_button_add( hbox_w, _("Cancel"), NULL, NULL );
 	g_signal_connect_swapped( G_OBJECT(button_w), "clicked", G_CALLBACK(gtk_widget_destroy), G_OBJECT(entry_window_w) );
@@ -1401,7 +1401,7 @@ filesel_window_response_cb( GtkDialog *dialog, gint response_id, gpointer data )
 /* Creates a file chooser window, with an optional default filename.
  * OK button activates ok_callback */
 GtkWidget *
-gui_filesel_window( const char *title, const char *init_filename, void (*ok_callback)( ), void *ok_callback_data )
+gui_filesel_window( const char *title, const char *init_filename, GCallback ok_callback, void *ok_callback_data )
 {
 	GtkWidget *filesel_window_w;
 
@@ -1459,142 +1459,6 @@ gui_window_modalize( GtkWidget *window_w, GtkWidget *parent_window_w )
 	/* Restore original state once the window is destroyed */
 	g_signal_connect( G_OBJECT(window_w), "destroy", G_CALLBACK(window_unmodalize), parent_window_w );
 }
-
-
-#if 0
-/* The following is stuff that isn't being used right now (obviously),
- * but may be in the future. TODO: Delete this section by v1.0! */
-
-
-/* The check button widget */
-GtkWidget *
-gui_check_button_add( GtkWidget *parent_w, const char *label, boolean init_state, void (*callback)( ), void *callback_data )
-{
-	GtkWidget *cbutton_w;
-
-	cbutton_w = gtk_check_button_new_with_label( label );
-	gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(cbutton_w), init_state );
-	gtk_toggle_button_set_mode( GTK_TOGGLE_BUTTON(cbutton_w), TRUE );
-	if (callback != NULL)
-		g_signal_connect( G_OBJECT(cbutton_w), "toggled", G_CALLBACK(callback), callback_data );
-	parent_child( parent_w, cbutton_w );
-
-	return cbutton_w;
-}
-
-
-/* Adds a check menu item to a menu */
-GtkWidget *
-gui_check_menu_item_add( GtkWidget *menu_w, const char *label, boolean init_state, void (*callback)( ), void *callback_data )
-{
-	GtkWidget *chkmenu_item_w;
-
-	chkmenu_item_w = gtk_check_menu_item_new_with_label( label );
-	gtk_check_menu_item_set_active( GTK_CHECK_MENU_ITEM(chkmenu_item_w), init_state );
-	gtk_check_menu_item_set_show_toggle( GTK_CHECK_MENU_ITEM(chkmenu_item_w), TRUE );
-	gtk_menu_shell_append( GTK_MENU_SHELL(menu_w), chkmenu_item_w );
-	g_signal_connect( G_OBJECT(chkmenu_item_w), "toggled", G_CALLBACK(callback), callback_data );
-	gtk_widget_show( chkmenu_item_w );
-
-	return chkmenu_item_w;
-}
-
-
-/* Resizes an entry to fit the width of the specified string */
-void
-gui_entry_set_width( GtkWidget *entry_w, const char *str )
-{
-	PangoLayout *layout;
-	int width;
-
-	layout = gtk_widget_create_pango_layout( entry_w, str );
-	pango_layout_get_pixel_size( layout, &width, NULL );
-	g_object_unref( layout );
-	gtk_widget_set_size_request( entry_w, width + 16, -1 );
-}
-
-
-/* The spin button widget */
-GtkWidget *
-gui_spin_button_add( GtkWidget *parent_w, GtkAdjustment *adj )
-{
-	GtkWidget *spinbtn_w;
-
-	spinbtn_w = gtk_spin_button_new( adj, 0.0, 0 );
-	if (GTK_IS_BOX(parent_w))
-		gtk_box_pack_start( GTK_BOX(parent_w), spinbtn_w, FALSE, FALSE, 0 );
-	else
-		gtk_container_add( GTK_CONTAINER(parent_w), spinbtn_w );
-	gtk_widget_show( spinbtn_w );
-
-	return spinbtn_w;
-}
-
-
-/* Returns the width of string, when drawn in the given widget */
-int
-gui_string_width( const char *str, GtkWidget *widget )
-{
-	PangoLayout *layout;
-	int width;
-
-	layout = gtk_widget_create_pango_layout( widget, str );
-	pango_layout_get_pixel_size( layout, &width, NULL );
-	g_object_unref( layout );
-	return width;
-}
-
-
-/* The horizontal value slider widget */
-GtkWidget *
-gui_hscale_add( GtkWidget *parent_w, GtkAdjustment *adjustment )
-{
-	GtkWidget *hscale_w;
-
-	hscale_w = gtk_scale_new( GTK_ORIENTATION_HORIZONTAL, GTK_ADJUSTMENT(adjustment) );
-	gtk_scale_set_digits( GTK_SCALE(hscale_w), 0 );
-	if (GTK_IS_BOX(parent_w))
-		gtk_box_pack_start( GTK_BOX(parent_w), hscale_w, TRUE, TRUE, 0 );
-	else
-		gtk_container_add( GTK_CONTAINER(parent_w), hscale_w );
-	gtk_widget_show( hscale_w );
-
-	return hscale_w;
-}
-
-
-/* The vertical value slider widget */
-GtkWidget *
-gui_vscale_add( GtkWidget *parent_w, GtkAdjustment *adjustment )
-{
-	GtkWidget *vscale_w;
-
-	vscale_w = gtk_scale_new( GTK_ORIENTATION_VERTICAL, GTK_ADJUSTMENT(adjustment) );
-	gtk_scale_set_value_pos( GTK_SCALE(vscale_w), GTK_POS_RIGHT );
-	gtk_scale_set_digits( GTK_SCALE(vscale_w), 0 );
-	if (GTK_IS_BOX(parent_w))
-		gtk_box_pack_start( GTK_BOX(parent_w), vscale_w, TRUE, TRUE, 0 );
-	else
-		gtk_container_add( GTK_CONTAINER(parent_w), vscale_w );
-	gtk_widget_show( vscale_w );
-
-	return vscale_w;
-}
-
-
-/* Associates a tooltip with a widget */
-void
-gui_tooltip_add( GtkWidget *widget, const char *tip_text )
-{
-	static GtkTooltips *tooltips = NULL;
-
-	if (tooltips == NULL) {
-		tooltips = gtk_tooltips_new( );
-		gtk_tooltips_set_delay( tooltips, 2000 );
-	}
-	gtk_tooltips_set_tip( tooltips, widget, tip_text, NULL );
-}
-#endif /* 0 */
 
 
 /* end gui.c */

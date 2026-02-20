@@ -123,48 +123,48 @@ window_init( FsvMode fsv_mode )
 	/* File menu */
 	menu_w = gui_menu_add( menu_bar_w, _("File") );
 	/* File menu items */
-	menu_item_w = gui_menu_item_add( menu_w, _("Change root..."), on_file_change_root_activate, NULL );
+	menu_item_w = gui_menu_item_add( menu_w, _("Change root..."), G_CALLBACK(on_file_change_root_activate), NULL );
 	gui_keybind( menu_item_w, _("^N") );
 	G_LIST_APPEND(sw_widget_list, menu_item_w);
-	gui_menu_item_add( menu_w, _("Save settings"), on_file_save_settings_activate, NULL );
+	gui_menu_item_add( menu_w, _("Save settings"), G_CALLBACK(on_file_save_settings_activate), NULL );
 	gui_separator_add( menu_w );
-	menu_item_w = gui_menu_item_add( menu_w, _("Exit"), on_file_exit_activate, NULL );
+	menu_item_w = gui_menu_item_add( menu_w, _("Exit"), G_CALLBACK(on_file_exit_activate), NULL );
 	gui_keybind( menu_item_w, _("^Q") );
 
 	/* Vis menu */
 	menu_w = gui_menu_add( menu_bar_w, _("Vis") );
 	/* Vis menu items */
 	gui_radio_menu_begin( fsv_mode );
-	gui_radio_menu_item_add( menu_w, _("DiscV"), on_vis_discv_activate, NULL );
-	gui_radio_menu_item_add( menu_w, _("MapV"), on_vis_mapv_activate, NULL );
-	gui_radio_menu_item_add( menu_w, _("TreeV"), on_vis_treev_activate, NULL );
+	gui_radio_menu_item_add( menu_w, _("DiscV"), G_CALLBACK(on_vis_discv_activate), NULL );
+	gui_radio_menu_item_add( menu_w, _("MapV"), G_CALLBACK(on_vis_mapv_activate), NULL );
+	gui_radio_menu_item_add( menu_w, _("TreeV"), G_CALLBACK(on_vis_treev_activate), NULL );
 
 	/* Color menu */
 	menu_w = gui_menu_add( menu_bar_w, _("Colors") );
 	/* Color menu items */
 	gui_radio_menu_begin( 0 );
-	menu_item_w = gui_radio_menu_item_add( menu_w, _("By node type"), on_color_by_nodetype_activate, NULL );
+	menu_item_w = gui_radio_menu_item_add( menu_w, _("By node type"), G_CALLBACK(on_color_by_nodetype_activate), NULL );
 	G_LIST_APPEND(sw_widget_list, menu_item_w);
 	color_by_nodetype_rmenu_item_w = menu_item_w;
-	menu_item_w = gui_radio_menu_item_add( menu_w, _("By timestamp"), on_color_by_timestamp_activate, NULL );
+	menu_item_w = gui_radio_menu_item_add( menu_w, _("By timestamp"), G_CALLBACK(on_color_by_timestamp_activate), NULL );
 	G_LIST_APPEND(sw_widget_list, menu_item_w);
 	color_by_timestamp_rmenu_item_w = menu_item_w;
-	menu_item_w = gui_radio_menu_item_add( menu_w, _("By wildcards"), on_color_by_wildcards_activate, NULL );
+	menu_item_w = gui_radio_menu_item_add( menu_w, _("By wildcards"), G_CALLBACK(on_color_by_wildcards_activate), NULL );
 	G_LIST_APPEND(sw_widget_list, menu_item_w);
 	color_by_wpattern_rmenu_item_w = menu_item_w;
 	gui_separator_add( menu_w );
-	gui_menu_item_add( menu_w, _("Setup..."), on_color_setup_activate, NULL );
+	gui_menu_item_add( menu_w, _("Setup..."), G_CALLBACK(on_color_setup_activate), NULL );
 
 #ifdef DEBUG
 	/* Debug menu */
 	menu_w = gui_menu_add( menu_bar_w, "Debug" );
 	/* Debug menu items */
-	gui_menu_item_add( menu_w, "Memory totals", debug_show_mem_totals, NULL );
-	gui_menu_item_add( menu_w, "Memory summary", debug_show_mem_summary, NULL );
-	gui_menu_item_add( menu_w, "Memory stats", debug_show_mem_stats, NULL );
+	gui_menu_item_add( menu_w, "Memory totals", G_CALLBACK(debug_show_mem_totals), NULL );
+	gui_menu_item_add( menu_w, "Memory summary", G_CALLBACK(debug_show_mem_summary), NULL );
+	gui_menu_item_add( menu_w, "Memory stats", G_CALLBACK(debug_show_mem_stats), NULL );
 	gui_separator_add( menu_w );
-	gui_menu_item_add( menu_w, "GLib memory profile", g_mem_profile, NULL );
-	gui_menu_item_add( menu_w, "GMemChunk info", g_mem_chunk_info, NULL );
+	gui_menu_item_add( menu_w, "GLib memory profile", G_CALLBACK(g_mem_profile), NULL );
+	gui_menu_item_add( menu_w, "GMemChunk info", G_CALLBACK(g_mem_chunk_info), NULL );
 #endif
 
 	/* Help menu (right-justified) */
@@ -177,7 +177,7 @@ window_init( FsvMode fsv_mode )
 		}
 	}
 	/* Help menu items */
-	gui_menu_item_add( menu_w, _("About"), on_help_about_fsv_activate, NULL );
+	gui_menu_item_add( menu_w, _("About"), G_CALLBACK(on_help_about_fsv_activate), NULL );
 
 	/* Done with the menu bar */
 
@@ -193,19 +193,19 @@ window_init( FsvMode fsv_mode )
 	hbox_w = gui_hbox_add( left_vbox_w, 2 );
 
 	/* "back" button */
-	button_w = gui_button_add( hbox_w, NULL, on_back_button_clicked, NULL );
+	button_w = gui_button_add( hbox_w, NULL, G_CALLBACK(on_back_button_clicked), NULL );
 	gui_pixmap_xpm_add( button_w, back_xpm );
 	G_LIST_APPEND(sw_widget_list, button_w);
 	/* "cd /" button */
-	button_w = gui_button_add( hbox_w, NULL, on_cd_root_button_clicked, NULL );
+	button_w = gui_button_add( hbox_w, NULL, G_CALLBACK(on_cd_root_button_clicked), NULL );
 	gui_pixmap_xpm_add( button_w, cd_root_xpm );
 	G_LIST_APPEND(sw_widget_list, button_w);
 	/* "cd .." button */
-	button_w = gui_button_add( hbox_w, NULL, on_cd_up_button_clicked, NULL );
+	button_w = gui_button_add( hbox_w, NULL, G_CALLBACK(on_cd_up_button_clicked), NULL );
 	gui_pixmap_xpm_add( button_w, cd_up_xpm );
 	G_LIST_APPEND(sw_widget_list, button_w);
 	/* "bird's-eye view" toggle button */
-	button_w = gui_toggle_button_add( hbox_w, NULL, FALSE, on_birdseye_view_togglebutton_toggled, NULL );
+	button_w = gui_toggle_button_add( hbox_w, NULL, FALSE, G_CALLBACK(on_birdseye_view_togglebutton_toggled), NULL );
 	gui_pixmap_xpm_add( button_w, birdseye_view_xpm );
 	G_LIST_APPEND(sw_widget_list, button_w);
 	birdseye_view_tbutton_w = button_w;

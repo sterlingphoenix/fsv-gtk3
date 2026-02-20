@@ -110,31 +110,39 @@ Step 2.4 - Replace GL/gl.h with epoxy/gl.h
   [x] Added PKG_CHECK_MODULES([EPOXY], [epoxy]) to configure.ac
 
 
-PHASE 3: CLEANUP AND POLISH
+PHASE 3: CLEANUP AND POLISH  *** DONE ***
 ============================
 
-Step 3.1 - Update entry API for GTK 3
-  [ ] gtk_entry_set_text() / gtk_entry_get_text() ->
-      gtk_editable_set_text() / gtk_editable_get_text()
-      (deprecated in 3.24+ but still works; note for future GTK 4 move)
-  [ ] gtk_entry_select_region() -> gtk_editable_select_region()
+Step 3.1 - Skip (entry API)
+  [x] gtk_entry_set_text() / gtk_entry_get_text() are NOT deprecated in GTK 3.
+      The gtk_editable_* replacements are a GTK 4 concern.
+      gtk_entry_select_region() already uses gtk_editable_select_region().
 
 Step 3.2 - Remove -Wno-incompatible-pointer-types compiler flag
-  [ ] Fix the underlying type mismatches that require this flag
-  [ ] src/Makefile.am: remove the flag
+  [x] gui.h/gui.c: changed void (*callback)( ) to GCallback callback
+      in all 13 gui_* function declarations/definitions
+  [x] dialog.c, window.c, gui.c: wrapped ~47 callback arguments with
+      G_CALLBACK() at call sites
+  [x] gui.c: changed struct OptionMenuItem callback field to GCallback
+  [x] scanfs.c: added explicit (union AnyNodeDesc *) casts for
+      g_slice_new0() assignments
+  [x] dialog.c: fixed g_list_insert_before() sibling argument using
+      g_list_find() to get the GList node
+  [x] src/Makefile.am: removed -Wno-incompatible-pointer-types
 
 Step 3.3 - Update build documentation
-  [ ] README.md: note minimum GTK 3 version (3.16+ for GtkGLArea)
-  [ ] README.md: note that Wayland is now supported (after Phase 2)
+  [x] README.md: noted GTK 3.16+ requirement, GL compatibility profile,
+      GDK_BACKEND=x11 fallback for Wayland/Mesa issues
 
 Step 3.4 - Clean up dead code
-  [ ] Review and either port or remove the #if 0 block in gui.c
-      (contains gtk_tooltips_new etc. which are removed in GTK 3;
-       GTK 3 uses gtk_widget_set_tooltip_text() instead)
-  [ ] Remove any remaining GTK 2 compatibility defines
+  [x] Deleted the entire #if 0 block in gui.c (gui_check_button_add,
+      gui_check_menu_item_add, gui_entry_set_width, gui_spin_button_add,
+      gui_string_width, gui_hscale_add, gui_vscale_add, gui_tooltip_add)
+      -- all used removed GTK 1/2 APIs and were unreferenced
 
 Step 3.5 - Final verification
-  [ ] Build with no warnings (beyond upstream GTK deprecations)
+  [x] Build with no warnings (beyond cosmetic
+      gtk_style_context_get_background_color deprecation in dialog.c)
   [ ] Test all three visualization modes (DiscV, MapV, TreeV)
   [ ] Test directory tree expand/collapse
   [ ] Test file list population

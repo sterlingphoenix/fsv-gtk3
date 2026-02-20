@@ -308,10 +308,6 @@ realize_cb( GtkWidget *widget, gpointer user_data )
 
 	ogl_init( );
 
-	/* Diagnostic: check what GL context we actually got */
-	g_message( "GL Renderer: %s", glGetString( GL_RENDERER ) );
-	g_message( "GL Version:  %s", glGetString( GL_VERSION ) );
-
 	/* Queue the initial render */
 	gtk_gl_area_queue_render( GTK_GL_AREA(widget) );
 }

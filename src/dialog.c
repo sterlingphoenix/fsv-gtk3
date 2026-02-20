@@ -108,7 +108,7 @@ dialog_change_root( void )
 	gui_cursor( main_window_w, GDK_WATCH );
 	gui_update( );
 
-	filesel_window_w = gui_filesel_window( _("Change Root Directory"), dir, change_root_cb, NULL );
+	filesel_window_w = gui_filesel_window( _("Change Root Directory"), dir, G_CALLBACK(change_root_cb), NULL );
 	xfree( dir );
 
 	gui_cursor( main_window_w, -1 );
@@ -549,7 +549,7 @@ csdialog_wpattern_clist_click_cb( GtkWidget *tree_w, GdkEventButton *ev_button )
 	}
 
 	/* Bring up color selection dialog */
-	gui_colorsel_window( title, color, csdialog_wpattern_color_selection_cb, color );
+	gui_colorsel_window( title, color, G_CALLBACK(csdialog_wpattern_color_selection_cb), color );
 
 	return FALSE;
 }
@@ -648,8 +648,10 @@ csdialog_wpattern_new_color_selection_cb( RGBcolor *selected_color, struct WPLis
 			place_before_existing_group = TRUE;
 
 #define WPGROUP_LIST csdialog.color_config.by_wpattern.wpgroup_list
-	if (place_before_existing_group)
-		G_LIST_INSERT_BEFORE(WPGROUP_LIST, row_data->wpgroup, wpgroup);
+	if (place_before_existing_group) {
+		GList *sibling = g_list_find( WPGROUP_LIST, row_data->wpgroup );
+		WPGROUP_LIST = g_list_insert_before( WPGROUP_LIST, sibling, wpgroup );
+	}
 	else {
 		G_LIST_APPEND(WPGROUP_LIST, wpgroup);
 		/* Scroll clist to bottom (to make new group visible) */
@@ -762,7 +764,7 @@ csdialog_wpattern_button_cb( GtkWidget *button_w )
 			row_data->wpattern = wpattern;
 			row_data->hex_color = NULL;
 		}
-		gui_colorsel_window( title, color, csdialog_wpattern_new_color_selection_cb, row_data );
+		gui_colorsel_window( title, color, G_CALLBACK(csdialog_wpattern_new_color_selection_cb), row_data );
 	}
 	else if (button_w == csdialog.wpattern.edit_pattern_button_w) {
 		/* Bring up pattern edit subdialog */
@@ -783,7 +785,7 @@ csdialog_wpattern_button_cb( GtkWidget *button_w )
 
 			SWITCH_FAIL
 		}
-		gui_entry_window( title, wpattern, csdialog_wpattern_edit_cb, row_data );
+		gui_entry_window( title, wpattern, G_CALLBACK(csdialog_wpattern_edit_cb), row_data );
 	}
 	else if (button_w == csdialog.wpattern.delete_button_w) {
 		/* Delete a pattern or color group */
@@ -895,7 +897,7 @@ dialog_color_setup( void )
 		/* Color picker button */
 		sprintf( strbuf, _("Color: %s"), node_type_names[i] );
 		color = &csdialog.color_config.by_nodetype.colors[i];
-		gui_colorpicker_add( hbox_w, color, strbuf, csdialog_node_type_color_picker_cb, color );
+		gui_colorpicker_add( hbox_w, color, strbuf, G_CALLBACK(csdialog_node_type_color_picker_cb), color );
 
 		/* Node type icon */
 		gui_pixmap_xpm_add( hbox_w, node_type_xpms[i] );
@@ -929,15 +931,15 @@ dialog_color_setup( void )
 	label_w = gui_label_add( hbox2_w, _("Color by:") );
 	gui_widget_packing( label_w, NO_EXPAND, NO_FILL, AT_END );
 	/* Old date edit widget */
-	csdialog.time.old_dateedit_w = gui_dateedit_add( NULL, csdialog.color_config.by_timestamp.old_time, csdialog_time_edit_cb, NULL );
+	csdialog.time.old_dateedit_w = gui_dateedit_add( NULL, csdialog.color_config.by_timestamp.old_time, G_CALLBACK(csdialog_time_edit_cb), NULL );
         gui_table_attach( table_w, csdialog.time.old_dateedit_w, 1, 2, 0, 1 );
 	/* New date edit widget */
-	csdialog.time.new_dateedit_w = gui_dateedit_add( NULL, csdialog.color_config.by_timestamp.new_time, csdialog_time_edit_cb, NULL );
+	csdialog.time.new_dateedit_w = gui_dateedit_add( NULL, csdialog.color_config.by_timestamp.new_time, G_CALLBACK(csdialog_time_edit_cb), NULL );
         gui_table_attach( table_w, csdialog.time.new_dateedit_w, 1, 2, 1, 2 );
 	/* Timestamp selection combo box */
-	gui_option_menu_item( _("Time of last access"), csdialog_time_timestamp_option_menu_cb, NULL );
-	gui_option_menu_item( _("Time of last modification"), csdialog_time_timestamp_option_menu_cb, NULL );
-	gui_option_menu_item( _("Time of last attribute change"), csdialog_time_timestamp_option_menu_cb, NULL );
+	gui_option_menu_item( _("Time of last access"), G_CALLBACK(csdialog_time_timestamp_option_menu_cb), NULL );
+	gui_option_menu_item( _("Time of last modification"), G_CALLBACK(csdialog_time_timestamp_option_menu_cb), NULL );
+	gui_option_menu_item( _("Time of last attribute change"), G_CALLBACK(csdialog_time_timestamp_option_menu_cb), NULL );
 	optmenu_w = gui_option_menu_add( NULL, csdialog.color_config.by_timestamp.timestamp_type );
         gui_table_attach( table_w, optmenu_w, 1, 2, 2, 3 );
 
@@ -952,21 +954,21 @@ dialog_color_setup( void )
 
 	/* Old end */
         color = &csdialog.color_config.by_timestamp.old_color;
-	csdialog.time.old_colorpicker_w = gui_colorpicker_add( hbox_w, color, _("Older Color"), csdialog_time_color_picker_cb, color );
+	csdialog.time.old_colorpicker_w = gui_colorpicker_add( hbox_w, color, _("Older Color"), G_CALLBACK(csdialog_time_color_picker_cb), color );
 	gui_hbox_add( hbox_w, 5 );
 	gui_label_add( hbox_w, _("Older") );
 
 	/* Spectrum type selection */
-	gui_option_menu_item( _("Rainbow"), csdialog_time_spectrum_option_menu_cb, NULL );
-	gui_option_menu_item( _("Heat"), csdialog_time_spectrum_option_menu_cb, NULL );
-	gui_option_menu_item( _("Gradient"), csdialog_time_spectrum_option_menu_cb, NULL );
+	gui_option_menu_item( _("Rainbow"), G_CALLBACK(csdialog_time_spectrum_option_menu_cb), NULL );
+	gui_option_menu_item( _("Heat"), G_CALLBACK(csdialog_time_spectrum_option_menu_cb), NULL );
+	gui_option_menu_item( _("Gradient"), G_CALLBACK(csdialog_time_spectrum_option_menu_cb), NULL );
 	optmenu_w = gui_option_menu_add( hbox_w, csdialog.color_config.by_timestamp.spectrum_type );
 	gui_widget_packing( optmenu_w, EXPAND, NO_FILL, AT_START );
 
 	/* New end */
 	gui_box_set_packing( hbox_w, NO_EXPAND, NO_FILL, AT_END );
         color = &csdialog.color_config.by_timestamp.new_color;
-	csdialog.time.new_colorpicker_w = gui_colorpicker_add( hbox_w, color, _("Newer Color"), csdialog_time_color_picker_cb, color );
+	csdialog.time.new_colorpicker_w = gui_colorpicker_add( hbox_w, color, _("Newer Color"), G_CALLBACK(csdialog_time_color_picker_cb), color );
 	gui_hbox_add( hbox_w, 5 );
 	gui_label_add( hbox_w, _("Newer") );
 
@@ -1041,12 +1043,12 @@ dialog_color_setup( void )
 
 	/* Action buttons */
 	vbox_w = gui_vbox_add( hbox_w, 0 );
-	csdialog.wpattern.new_color_button_w = gui_button_add( vbox_w, _("New color"), csdialog_wpattern_button_cb, NULL );
+	csdialog.wpattern.new_color_button_w = gui_button_add( vbox_w, _("New color"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
 	gui_separator_add( vbox_w );
-	csdialog.wpattern.edit_pattern_button_w = gui_button_add( vbox_w, _("Edit pattern"), csdialog_wpattern_button_cb, NULL );
+	csdialog.wpattern.edit_pattern_button_w = gui_button_add( vbox_w, _("Edit pattern"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
 	gtk_widget_set_sensitive( csdialog.wpattern.edit_pattern_button_w, FALSE );
 	gui_separator_add( vbox_w );
-	csdialog.wpattern.delete_button_w = gui_button_add( vbox_w, _("Delete"), csdialog_wpattern_button_cb, NULL );
+	csdialog.wpattern.delete_button_w = gui_button_add( vbox_w, _("Delete"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
 	gtk_widget_set_sensitive( csdialog.wpattern.delete_button_w, FALSE );
 
 	csdialog_wpattern_clist_populate( );
@@ -1058,9 +1060,9 @@ dialog_color_setup( void )
 	gui_box_set_packing( hbox_w, EXPAND, FILL, AT_START );
 
 	/* OK and Cancel buttons */
-	gui_button_with_pixmap_xpm_add( hbox_w, button_ok_xpm, _("OK"), csdialog_ok_button_cb, window_w );
+	gui_button_with_pixmap_xpm_add( hbox_w, button_ok_xpm, _("OK"), G_CALLBACK(csdialog_ok_button_cb), window_w );
 	gui_hbox_add( hbox_w, 0 ); /* spacer */
-	gui_button_with_pixmap_xpm_add( hbox_w, button_cancel_xpm, _("Cancel"), close_cb, window_w );
+	gui_button_with_pixmap_xpm_add( hbox_w, button_cancel_xpm, _("Cancel"), G_CALLBACK(close_cb), window_w );
 
 	/* Set page to current color mode */
 	gtk_notebook_set_current_page( GTK_NOTEBOOK(csdialog.notebook_w), color_mode );
@@ -1323,7 +1325,7 @@ dialog_node_properties( GNode *node )
 
 		/* Button to point camera at target node (if present) */
 		hbox_w = gui_hbox_add( vbox_w, 10 );
-		button_w = gui_button_add( hbox_w, _("Look at target node"), look_at_target_node_cb, target_node );
+		button_w = gui_button_add( hbox_w, _("Look at target node"), G_CALLBACK(look_at_target_node_cb), target_node );
 		gui_widget_packing( button_w, EXPAND, NO_FILL, AT_START );
 		gtk_widget_set_sensitive( button_w, target_node != NULL );
 		g_signal_connect( G_OBJECT(button_w), "clicked", G_CALLBACK(close_cb), window_w );
@@ -1336,7 +1338,7 @@ dialog_node_properties( GNode *node )
 	}
 
 	/* Close button */
-	button_w = gui_button_add( main_vbox_w, _("Close"), close_cb, window_w );
+	button_w = gui_button_add( main_vbox_w, _("Close"), G_CALLBACK(close_cb), window_w );
 
 	xfree( proptext );
 
@@ -1409,16 +1411,16 @@ context_menu( GNode *node, GdkEventButton *ev_button )
 	popup_menu_w = gtk_menu_new( );
 	if (NODE_IS_DIR(node)) {
 		if (dirtree_entry_expanded( node ))
-			gui_menu_item_add( popup_menu_w, _("Collapse"), collapse_cb, node );
+			gui_menu_item_add( popup_menu_w, _("Collapse"), G_CALLBACK(collapse_cb), node );
 		else {
-			gui_menu_item_add( popup_menu_w, _("Expand"), expand_cb, node );
+			gui_menu_item_add( popup_menu_w, _("Expand"), G_CALLBACK(expand_cb), node );
 			if (DIR_NODE_DESC(node)->subtree.counts[NODE_DIRECTORY] > 0)
-				gui_menu_item_add( popup_menu_w, _("Expand all"), expand_recursive_cb, node );
+				gui_menu_item_add( popup_menu_w, _("Expand all"), G_CALLBACK(expand_recursive_cb), node );
 		}
 	}
 	if (node != globals.current_node)
-		gui_menu_item_add( popup_menu_w, _("Look at"), look_at_cb, node );
-	gui_menu_item_add( popup_menu_w, _("Properties"), properties_cb, node );
+		gui_menu_item_add( popup_menu_w, _("Look at"), G_CALLBACK(look_at_cb), node );
+	gui_menu_item_add( popup_menu_w, _("Properties"), G_CALLBACK(properties_cb), node );
 
 	gtk_menu_popup_at_pointer( GTK_MENU(popup_menu_w), (GdkEvent *)ev_button );
 }

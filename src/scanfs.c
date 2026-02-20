@@ -168,13 +168,13 @@ process_dir( const char *dir, GNode *dnode )
 			process_dir( node_absname( node ), node );
 
 			/* Move new descriptor into working memory */
-			andesc = g_slice_new0( DirNodeDesc );
+			andesc = (union AnyNodeDesc *)g_slice_new0( DirNodeDesc );
 			memcpy( andesc, DIR_NODE_DESC(node), sizeof(DirNodeDesc) );
 			node->data = andesc;
 		}
 		else {
 			/* Move new descriptor into working memory */
-			andesc = g_slice_new0( NodeDesc );
+			andesc = (union AnyNodeDesc *)g_slice_new0( NodeDesc );
 			memcpy( andesc, NODE_DESC(node), sizeof(NodeDesc) );
 			node->data = andesc;
 		}

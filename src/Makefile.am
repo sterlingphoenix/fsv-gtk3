@@ -13,9 +13,6 @@ AM_CPPFLAGS = \
 	@GTK_CFLAGS@ \
 	@EPOXY_CFLAGS@
 
-AM_CFLAGS = \
-	-Wno-incompatible-pointer-types
-
 bin_PROGRAMS = fsv
 noinst_HEADERS = \
 	about.h \
