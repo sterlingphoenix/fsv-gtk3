@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([fsv], [2.10])
+AC_INIT([fsv], [2.20])
 AC_CONFIG_SRCDIR([src/fsv.c])
 AC_CONFIG_HEADERS([config.h])
 
@@ -59,36 +59,8 @@ AC_SUBST([localedir])
 PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.16])
 PKG_CHECK_MODULES([GLIB], [glib-2.0])
 
-#### OpenGL/Mesa3D libraries ####
-AC_ARG_WITH([GL-prefix],
-  [AS_HELP_STRING([--with-GL-prefix=PFX], [Prefix where GL is installed (optional)])])
-
-if test -n "$with_GL_prefix" ; then
-	GL_CFLAGS=-I$with_GL_prefix/include
-	GL_LDOPTS=-L$with_GL_prefix/lib
-else
-	GL_CFLAGS=""
-	GL_LDOPTS=""
-fi
-
-AC_CHECK_HEADER([GL/glu.h], [have_GLU="yes"], [have_GLU="no"])
-AC_CHECK_LIB([GL], [glBegin], [have_GL=yes], [], [$GTK_LIBS $GL_LDOPTS])
-
-if test "$have_GLU" = "no" ; then
-	AC_MSG_ERROR([Missing OpenGL utility library (GLU)])
-fi
-
-if test "$have_GL" = "yes" ; then
-	GL_LIBS="$GL_LDOPTS -lGL -lGLU"
-else
-	AC_MSG_ERROR([You need GL libraries])
-fi
-AC_SUBST([GL_CFLAGS])
-AC_SUBST([GL_LIBS])
-#### end of OpenGL/Mesa3D configuration ####
-
-# Check for X11 (needed for GLX)
-PKG_CHECK_MODULES([X11], [x11])
+# libepoxy for OpenGL function loading (replaces manual GL/GLX)
+PKG_CHECK_MODULES([EPOXY], [epoxy])
 
 # Check for 'file' command
 AC_PATH_PROG([FILE_CMD], [file])

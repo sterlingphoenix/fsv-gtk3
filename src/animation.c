@@ -420,8 +420,9 @@ animation_loop( void )
 	state_changed = morph_iteration( );
 
 	if (globals.need_redraw) {
-		/* Redraw viewport */
-		ogl_draw( );
+		/* Tell GtkGLArea to redraw (actual rendering happens
+		 * in render_cb, where the FBO is properly bound) */
+		ogl_queue_render( );
 
 		/* Update framerate */
 		framerate_iteration( FRAME_RENDERED );

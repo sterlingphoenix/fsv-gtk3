@@ -25,7 +25,7 @@
 #include "common.h"
 #include "geometry.h"
 
-#include <GL/gl.h>
+#include <epoxy/gl.h>
 
 #include "about.h"
 #include "animation.h"
@@ -3123,6 +3123,8 @@ geometry_draw_for_pick( void )
 }
 
 
+static void geometry_draw_highlight( void );
+
 /* Top-level call to draw viewport content */
 void
 geometry_draw( boolean high_detail )
@@ -3157,6 +3159,9 @@ geometry_draw( boolean high_detail )
 
 		SWITCH_FAIL
 	}
+
+	/* Draw highlight overlay if active */
+	geometry_draw_highlight( );
 }
 
 
@@ -3283,174 +3288,71 @@ draw_node( GNode *node )
 }
 
 
-/* Highlights a node. This isn't a draw function per se, as it manipulates
- * the front and back buffers directly to do its work. "strong" flag
- * indicates whether a noticeably heavier highlight should be drawn.
- * Passing NULL/FALSE clears the existing highlight;
- * passing NULL/TRUE resets internal state (ogl_draw( ) only, please) */
-void
-geometry_highlight_node( GNode *node, boolean strong )
+/* Current highlight state */
+static GNode *cur_highlight_node = NULL;
+static boolean cur_highlight_strong = FALSE;
+static boolean cur_highlight_active = FALSE;
+
+
+/* Draws the wireframe highlight overlay for the currently highlighted node.
+ * Called at the end of geometry_draw() as part of the normal render pass */
+static void
+geometry_draw_highlight( void )
 {
-	static boolean highlight_drawn = FALSE;
-	static boolean highlight_strong = FALSE;
-	static GNode *highlighted_node;
-	static double prev_proj_matrix[16];
-	static double prev_mview_matrix[16];
-	static int prev_vp_x1, prev_vp_y1;
-	static int prev_vp_x2, prev_vp_y2;
-	GLfloat feedback_buf[1024];
-	GLint viewport[4];
-	int width, height;
-	int vp_x, vp_y;
-	int vp_x1 = INT_MAX, vp_y1 = INT_MAX;
-	int vp_x2 = -1, vp_y2 = -1;
-	int val_count;
-	int i = 0, v;
-
-	if ((node == NULL) && strong) {
-		highlight_drawn = FALSE;
+	if (!cur_highlight_active || cur_highlight_node == NULL)
 		return;
-	}
 
-	/* Disable active per-fragment operations
-	 * (for a faster glCopyPixels( )) */
-	glDisable( GL_DITHER );
 	glDisable( GL_DEPTH_TEST );
 	glDisable( GL_LIGHTING );
-
-	if (highlight_drawn) {
-		if ((node != highlighted_node) || (!strong && highlight_strong)) {
-			/* Remove the previously drawn highlight
-			 * (i.e. restore the previously saved portion
-			 * of the screen) */
-			glMatrixMode( GL_PROJECTION );
-			glPushMatrix( );
-			glLoadMatrixd( prev_proj_matrix );
-			glMatrixMode( GL_MODELVIEW );
-			glPushMatrix( );
-			glLoadMatrixd( prev_mview_matrix );
-
-			glReadBuffer( GL_BACK );
-			glDrawBuffer( GL_FRONT );
-			glCopyPixels( prev_vp_x1, prev_vp_y1, prev_vp_x2 - prev_vp_x1, prev_vp_y2 - prev_vp_y1, GL_COLOR );
-			glDrawBuffer( GL_BACK );
-
-			glMatrixMode( GL_PROJECTION );
-			glPopMatrix( );
-			glMatrixMode( GL_MODELVIEW );
-			glPopMatrix( );
-		}
-		else if (strong == highlight_strong) {
-			/* Desired highlight is already drawn */
-			glEnable( GL_LIGHTING );
-			glEnable( GL_DEPTH_TEST );
-			glEnable( GL_DITHER );
-			return;
-		}
-	}
-
-	if ((node == NULL) && !strong) {
-		/* Highlight has been cleared, we're done */
-		highlight_drawn = FALSE;
-		glEnable( GL_LIGHTING );
-		glEnable( GL_DEPTH_TEST );
-		glEnable( GL_DITHER );
-		glFlush( );
-		return;
-	}
-
 	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
-	if (!highlight_drawn || (node != highlighted_node)) {
-		/* Use feedback to determine what portion of the screen
-		 * will need to be saved */
-		glFeedbackBuffer( 1024, GL_2D, feedback_buf );
-		glRenderMode( GL_FEEDBACK );
-		draw_node( node );
-		val_count = glRenderMode( GL_RENDER );
-
-		/* Parse values returned in feedback buffer */
-		while (i < val_count) {
-			i++; /* or: ptype = feedback_buf[i++]; */
-			/* (ptype == GL_LINE_TOKEN or GL_LINE_RESET_TOKEN) */
-			for (v = 0; v < 2; v++) {
-				vp_x = (int)feedback_buf[i++];
-				vp_y = (int)feedback_buf[i++];
-				/* Find corners */
-				vp_x1 = MIN(vp_x, vp_x1);
-				vp_y1 = MIN(vp_y, vp_y1);
-				vp_x2 = MAX(vp_x, vp_x2);
-				vp_y2 = MAX(vp_y, vp_y2);
-			}
-		}
-
-		/* Get viewport dimensions */
-		glGetIntegerv( GL_VIEWPORT, viewport );
-		width = viewport[2];
-		height = viewport[3];
-
-		/* Allow a 4-pixel margin of safety */
-		vp_x1 = MAX(0, vp_x1 - 4);
-		vp_y1 = MAX(0, vp_y1 - 4);
-		vp_x2 = MIN(width - 1, vp_x2 + 4);
-		vp_y2 = MIN(height - 1, vp_y2 + 4);
-
-		/* Copy affected portion of front buffer to back buffer */
-		glMatrixMode( GL_PROJECTION );
-		glPushMatrix( ); /* Save for upcoming highlight draw */
-		glLoadIdentity( );
-		glOrtho( 0.0, (double)width, 0.0, (double)height, -1.0, 1.0 );
-		glGetDoublev( GL_PROJECTION_MATRIX, prev_proj_matrix );
-		glMatrixMode( GL_MODELVIEW );
-		glPushMatrix( ); /* Save for upcoming highlight draw */
-		glLoadIdentity( );
-		glRasterPos2i( vp_x1, vp_y1 );
-		glGetDoublev( GL_MODELVIEW_MATRIX, prev_mview_matrix );
-
-		glReadBuffer( GL_FRONT );
-		glCopyPixels( vp_x1, vp_y1, vp_x2 - vp_x1, vp_y2 - vp_y1, GL_COLOR );
-		glReadBuffer( GL_BACK );
-
-		prev_vp_x1 = vp_x1;
-		prev_vp_y1 = vp_y1;
-		prev_vp_x2 = vp_x2;
-		prev_vp_y2 = vp_y2;
-
-		/* Restore matrices for upcoming highlight draw */
-		glMatrixMode( GL_PROJECTION );
-		glPopMatrix( );
-		glMatrixMode( GL_MODELVIEW );
-		glPopMatrix( );
-	}
-
-	/* Draw highlight directly to front buffer */
-	glDrawBuffer( GL_FRONT );
-
-	/* Draw highlight */
-	if (strong) {
+	if (cur_highlight_strong) {
 		glLineWidth( 7.0 );
 		glColor3f( 1.0, 0.75, 0.0 );
-		draw_node( node );
+		draw_node( cur_highlight_node );
 		glColor3f( 1.0, 0.5, 0.0 );
 	}
 	else
 		glColor3f( 1.0, 1.0, 1.0 );
 	glLineWidth( 3.0 );
-	draw_node( node );
+	draw_node( cur_highlight_node );
 	glLineWidth( 1.0 );
 
-	/* Restore normal GL state */
-	glDrawBuffer( GL_BACK );
 	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 	glEnable( GL_LIGHTING );
 	glEnable( GL_DEPTH_TEST );
-	glEnable( GL_DITHER );
+}
 
-	glFlush( );
 
-	highlight_drawn = TRUE;
-	highlight_strong = strong;
-	highlighted_node = node;
+/* Updates the highlight state. The highlight is drawn as part of the
+ * normal render pass in geometry_draw().
+ * Passing NULL/FALSE clears the highlight;
+ * passing NULL/TRUE is a no-op (legacy reset, kept for compatibility) */
+void
+geometry_highlight_node( GNode *node, boolean strong )
+{
+	if ((node == NULL) && strong) {
+		/* Legacy reset call from ogl_draw() -- no-op */
+		return;
+	}
+
+	/* Check if the highlight is already showing what we want */
+	if (cur_highlight_active && node == cur_highlight_node &&
+	    strong == cur_highlight_strong)
+		return;
+
+	if (node == NULL) {
+		cur_highlight_active = FALSE;
+		cur_highlight_node = NULL;
+	}
+	else {
+		cur_highlight_active = TRUE;
+		cur_highlight_node = node;
+		cur_highlight_strong = strong;
+	}
+
+	/* Request a redraw so the highlight change becomes visible */
+	redraw( );
 }
 
 

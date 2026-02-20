@@ -29,6 +29,7 @@
 
 
 void ogl_make_current( void );
+void ogl_queue_render( void );
 void ogl_resize( void );
 void ogl_refresh( void );
 double ogl_aspect_ratio( void );

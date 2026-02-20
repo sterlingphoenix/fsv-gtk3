@@ -24,7 +24,7 @@ Its ancestor, SGI's `fsn` (pronounced "fusion") originated on IRIX and was promi
 **Install**
 
 
-1. `sudo apt-get install libgtk-3-dev libgl1-mesa-dev libglu1-mesa-dev`
+1. `sudo apt-get install libgtk-3-dev libepoxy-dev`
 2. Clone the repository
 3. Run `./autogen.sh`
 4. Do the install dance:

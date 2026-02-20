@@ -67,41 +67,47 @@ Step 1.6 - Replace other deprecated GTK 2 APIs
   - gtk_style_context_get_background_color (dialog.c) -- cosmetic
 
 
-PHASE 2: OPENGL WIDGET MIGRATION (the big one)
+PHASE 2: OPENGL WIDGET MIGRATION (the big one)  *** DONE ***
 ===============================================
 
 Step 2.1 - Replace expose-event with draw signal
-  [ ] ogl.c expose_cb(): change from "expose-event" (GdkEventExpose) to
-      "draw" signal (cairo_t *cr parameter)
-  [ ] gui.c preview_spectrum_expose_cb(): same change
-  [ ] gui.c: remove gdk_cairo_create() calls (draw signal provides cr)
+  [x] gui.c preview_spectrum_expose_cb(): changed to "draw" signal
+      with cairo_t *cr parameter, removed gdk_cairo_create()
+  [x] ogl.c expose_cb(): replaced entirely by GtkGLArea "render" signal
 
 Step 2.2 - Replace manual GLX with GtkGLArea
-  [ ] ogl.c: replace GtkDrawingArea + manual GLX with GtkGLArea
-  [ ] Remove glXChooseVisual(), glXCreateContext(), glXMakeCurrent(),
-      glXSwapBuffers() - GtkGLArea handles all of this
-  [ ] Replace realize_cb with GtkGLArea "realize" signal
-  [ ] Replace expose_cb/draw with GtkGLArea "render" signal
-  [ ] Replace configure_cb with GtkGLArea "resize" signal
-  [ ] Remove gdk_window_set_background_pattern() calls (not needed)
-  [ ] Remove gtk_widget_set_app_paintable() call (not needed)
-  [ ] ogl_widget_new(): return gtk_gl_area_new() instead
-  [ ] ogl_make_current(): use gtk_gl_area_make_current()
-  [ ] ogl_gl_query(): simplify or remove (GtkGLArea handles capability)
-  [ ] Update configure.ac: remove manual GL/GLX checks, add epoxy dependency
-  [ ] Remove X11 pkg-config dependency if no longer directly used
-  [ ] src/Makefile.am: update CFLAGS/LIBS
+  [x] ogl.c: replaced GtkDrawingArea + manual GLX with GtkGLArea
+  [x] Removed glXChooseVisual(), glXCreateContext(), glXMakeCurrent(),
+      glXSwapBuffers() -- GtkGLArea handles all of this
+  [x] Added create-context signal for compatibility profile
+  [x] Replaced realize_cb, expose_cb, configure_cb with
+      realize/render/resize GtkGLArea signals
+  [x] Removed gdk_window_set_background_pattern() and
+      gtk_widget_set_app_paintable() (not needed with GtkGLArea)
+  [x] Removed gdk/gdkx.h, GL/glx.h includes (no X11 dependency)
+  [x] Refactored geometry_highlight_node() to eliminate front-buffer
+      access (draws highlight as part of normal render pass)
+  [x] Removed re-render in ogl_color_pick() (no longer needed)
+  [x] configure.ac: removed GL/GLX/X11 manual checks, uses epoxy only
+  [x] src/Makefile.am: removed @GL_LIBS@, @X11_LIBS@, @GL_CFLAGS@,
+      @X11_CFLAGS@; uses @EPOXY_CFLAGS@ and @EPOXY_LIBS@
+  [x] animation.c: updated render loop to use ogl_queue_render()
+  [x] viewport.c: removed GDK_EXPOSE/GDK_CONFIGURE event handling
+  [x] gui.c: removed GDK_EXPOSURE_MASK/GDK_STRUCTURE_MASK from
+      GL area event mask
 
 Step 2.3 - Replace GLU usage
-  [ ] tmaptext.c: gluBuild2DMipmaps() -> glGenerateMipmap() (requires
-      GL 3.0+) or manual mipmap generation
-  [ ] configure.ac: remove GLU dependency check and -lGLU
-  [ ] Remove #include <GL/glu.h>
+  [x] tmaptext.c: gluBuild2DMipmaps() -> glTexImage2D() +
+      glGenerateMipmap()
+  [x] configure.ac: removed GLU dependency check and -lGLU
+  [x] Removed #include <GL/glu.h> from tmaptext.c and ogl.c
+  [x] Fixed stray */ comment terminator bug in tmaptext.c
 
 Step 2.4 - Replace GL/gl.h with epoxy/gl.h
-  [ ] All files including <GL/gl.h>: change to <epoxy/gl.h>
-  [ ] Remove <GL/glx.h> includes (no longer needed)
-  [ ] This gives us proper function pointer loading on all platforms
+  [x] All files including <GL/gl.h>: changed to <epoxy/gl.h>
+      (ogl.c, geometry.c, tmaptext.c, about.c)
+  [x] Removed <GL/glx.h> includes (replaced with epoxy, then removed)
+  [x] Added PKG_CHECK_MODULES([EPOXY], [epoxy]) to configure.ac
 
 
 PHASE 3: CLEANUP AND POLISH

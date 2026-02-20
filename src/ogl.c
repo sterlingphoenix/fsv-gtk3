@@ -26,10 +26,7 @@
 #include "ogl.h"
 
 #include <gtk/gtk.h>
-#include <gdk/gdkx.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glx.h>
+#include <epoxy/gl.h>
 
 #include "animation.h" /* redraw( ) */
 #include "camera.h"
@@ -40,40 +37,22 @@
 /* Main viewport OpenGL area widget */
 static GtkWidget *viewport_gl_area_w = NULL;
 
-/* GLX context and visual info */
-static GLXContext glx_context = NULL;
-
-
-/* Makes the GL context current for the widget */
-static void
-gl_area_make_current( GtkWidget *widget )
-{
-	GdkWindow *gdk_win = gtk_widget_get_window( widget );
-	Display *xdisplay = GDK_WINDOW_XDISPLAY( gdk_win );
-	Window xwindow = GDK_WINDOW_XID( gdk_win );
-
-	glXMakeCurrent( xdisplay, xwindow, glx_context );
-}
-
 
 /* Ensures the GL context is current (public interface) */
 void
 ogl_make_current( void )
 {
-	if (viewport_gl_area_w != NULL && glx_context != NULL)
-		gl_area_make_current( viewport_gl_area_w );
+	if (viewport_gl_area_w != NULL)
+		gtk_gl_area_make_current( GTK_GL_AREA(viewport_gl_area_w) );
 }
 
 
-/* Swap buffers for the GL widget */
-static void
-gl_area_swap_buffers( GtkWidget *widget )
+/* Queues a render of the GL viewport */
+void
+ogl_queue_render( void )
 {
-	GdkWindow *gdk_win = gtk_widget_get_window( widget );
-	Display *xdisplay = GDK_WINDOW_XDISPLAY( gdk_win );
-	Window xwindow = GDK_WINDOW_XID( gdk_win );
-
-	glXSwapBuffers( xdisplay, xwindow );
+	if (viewport_gl_area_w != NULL)
+		gtk_gl_area_queue_render( GTK_GL_AREA(viewport_gl_area_w) );
 }
 
 
@@ -144,6 +123,7 @@ ogl_resize( void )
 void
 ogl_refresh( void )
 {
+	ogl_queue_render( );
 	redraw( );
 }
 
@@ -225,10 +205,6 @@ ogl_draw( void )
 	static FsvMode prev_mode = FSV_NONE;
 	int err;
 
-	/* Ensure GL context is current - important when called from
-	 * the animation idle loop rather than from expose_cb */
-	ogl_make_current( );
-
 	geometry_highlight_node( NULL, TRUE );
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
@@ -248,8 +224,6 @@ ogl_draw( void )
                 if (globals.fsv_mode != FSV_SPLASH)
 			return;
 	}
-
-	gl_area_swap_buffers( viewport_gl_area_w );
 }
 
 
@@ -264,8 +238,9 @@ ogl_color_pick( int x, int y, unsigned int *face_id )
 	unsigned int node_id;
 	float save_clear_color[4];
 
-	/* Ensure GL context is current */
+	/* Ensure GL context and FBO are current */
 	ogl_make_current( );
+	gtk_gl_area_attach_buffers( GTK_GL_AREA(viewport_gl_area_w) );
 
 	/* Save GL state */
 	glGetFloatv( GL_COLOR_CLEAR_VALUE, save_clear_color );
@@ -294,10 +269,7 @@ ogl_color_pick( int x, int y, unsigned int *face_id )
 	setup_modelview_matrix( );
 	geometry_draw_for_pick( );
 
-	/* Read the pixel at (x, y) from back buffer.
-	 * Note: glReadBuffer must be explicitly set because
-	 * geometry_highlight_node() may leave it set to GL_FRONT. */
-	glReadBuffer( GL_BACK );
+	/* Read the pixel at (x, y) */
 	glGetIntegerv( GL_VIEWPORT, viewport );
 	glReadPixels( x, viewport[3] - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel );
 
@@ -318,115 +290,47 @@ ogl_color_pick( int x, int y, unsigned int *face_id )
 	if (save_alpha_test) glEnable( GL_ALPHA_TEST );
 	glShadeModel( GL_FLAT );
 
-	/* Re-render normal scene to back buffer so that
-	 * geometry_highlight_node() can safely copy from it */
-	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	setup_projection_matrix( TRUE );
-	setup_modelview_matrix( );
-	geometry_draw( TRUE );
+	/* Re-render the normal scene so the FBO isn't left with
+	 * pick colors (which would briefly flash on screen) */
+	ogl_draw( );
 
 	return node_id;
 }
 
 
-/* Helper callback for realize */
+/* GtkGLArea "realize" signal handler */
 static void
 realize_cb( GtkWidget *widget, gpointer user_data )
 {
-	GdkWindow *gdk_win;
-	Display *xdisplay;
-	GdkScreen *screen;
-	int xscreen;
-	XVisualInfo *xvi;
-	Window xwindow;
-	int gl_attribs[] = {
-		GLX_RGBA,
-		GLX_RED_SIZE, 1,
-		GLX_GREEN_SIZE, 1,
-		GLX_BLUE_SIZE, 1,
-		GLX_DEPTH_SIZE, 1,
-		GLX_DOUBLEBUFFER,
-		None
-	};
-
-	gdk_win = gtk_widget_get_window( widget );
-	xdisplay = GDK_WINDOW_XDISPLAY( gdk_win );
-	screen = gtk_widget_get_screen( widget );
-	xscreen = GDK_SCREEN_XNUMBER( screen );
-	xwindow = GDK_WINDOW_XID( gdk_win );
-
-	/* Get visual info for GLX */
-	xvi = glXChooseVisual( xdisplay, xscreen, gl_attribs );
-	if (xvi == NULL) {
-		g_error( "Cannot find suitable GLX visual" );
+	gtk_gl_area_make_current( GTK_GL_AREA(widget) );
+	if (gtk_gl_area_get_error( GTK_GL_AREA(widget) ) != NULL)
 		return;
-	}
 
-	/* Create GLX context */
-	glx_context = glXCreateContext( xdisplay, xvi, NULL, True );
-	XFree( xvi );
-
-	if (glx_context == NULL) {
-		g_error( "Cannot create GLX context" );
-		return;
-	}
-
-	/* Make context current and initialize OpenGL */
-	glXMakeCurrent( xdisplay, xwindow, glx_context );
 	ogl_init( );
 
-	/* Prevent GDK from clearing the GL widget's background on expose.
-	 * Without this, GDK erases the window before our idle-callback
-	 * renderer can swap in the GL content, causing a blank display. */
-	gdk_window_set_background_pattern( gdk_win, NULL );
+	/* Diagnostic: check what GL context we actually got */
+	g_message( "GL Renderer: %s", glGetString( GL_RENDERER ) );
+	g_message( "GL Version:  %s", glGetString( GL_VERSION ) );
+
+	/* Queue the initial render */
+	gtk_gl_area_queue_render( GTK_GL_AREA(widget) );
 }
 
 
-/* Helper callback for map (widget becomes visible on screen).
- * Re-apply background fix in case the style engine reset it. */
+/* GtkGLArea "render" signal handler */
 static gboolean
-map_cb( GtkWidget *widget, GdkEventAny *event, gpointer user_data )
+render_cb( GtkGLArea *area, GdkGLContext *context, gpointer user_data )
 {
-	GdkWindow *gdk_win = gtk_widget_get_window( widget );
-	if (gdk_win != NULL)
-		gdk_window_set_background_pattern( gdk_win, NULL );
-	return FALSE;
-}
-
-
-/* Helper callback for configure (resize) */
-static gboolean
-configure_cb( GtkWidget *widget, GdkEventConfigure *event, gpointer user_data )
-{
-	GdkWindow *gdk_win;
-
-	if (glx_context == NULL)
-		return FALSE;
-
-	/* Re-apply background fix in case style engine or theme reset it.
-	 * This prevents GDK from painting over our GL content on expose. */
-	gdk_win = gtk_widget_get_window( widget );
-	if (gdk_win != NULL)
-		gdk_window_set_background_pattern( gdk_win, NULL );
-
-	gl_area_make_current( widget );
-	ogl_resize( );
-
-	return FALSE;
-}
-
-
-/* Helper callback for expose (redraw) */
-static gboolean
-expose_cb( GtkWidget *widget, GdkEventExpose *event, gpointer user_data )
-{
-	if (glx_context == NULL)
-		return FALSE;
-
-	gl_area_make_current( widget );
 	ogl_draw( );
-
 	return TRUE;
+}
+
+
+/* GtkGLArea "resize" signal handler */
+static void
+resize_cb( GtkGLArea *area, gint width, gint height, gpointer user_data )
+{
+	glViewport( 0, 0, width, height );
 }
 
 
@@ -434,40 +338,32 @@ expose_cb( GtkWidget *widget, GdkEventExpose *event, gpointer user_data )
 GtkWidget *
 ogl_widget_new( void )
 {
-	/* Use a drawing area as the base widget for our GL context */
-	viewport_gl_area_w = gtk_drawing_area_new( );
+	viewport_gl_area_w = gtk_gl_area_new( );
 
-	/* Tell GTK this widget paints its own background (via GL) */
-	gtk_widget_set_app_paintable( viewport_gl_area_w, TRUE );
+	/* Enable depth buffer */
+	gtk_gl_area_set_has_depth_buffer( GTK_GL_AREA(viewport_gl_area_w), TRUE );
 
-	/* Connect signals */
+	/* We control when rendering happens (via queue_render from animation loop) */
+	gtk_gl_area_set_auto_render( GTK_GL_AREA(viewport_gl_area_w), FALSE );
+
+	/* Connect signals.
+	 * Note: compatibility profile is requested via GDK_GL=legacy
+	 * environment variable set in main() before gtk_init() */
 	g_signal_connect( viewport_gl_area_w, "realize", G_CALLBACK(realize_cb), NULL );
-	g_signal_connect( viewport_gl_area_w, "map-event", G_CALLBACK(map_cb), NULL );
-	g_signal_connect( viewport_gl_area_w, "configure-event", G_CALLBACK(configure_cb), NULL );
-	g_signal_connect( viewport_gl_area_w, "expose-event", G_CALLBACK(expose_cb), NULL );
+	g_signal_connect( viewport_gl_area_w, "render", G_CALLBACK(render_cb), NULL );
+	g_signal_connect( viewport_gl_area_w, "resize", G_CALLBACK(resize_cb), NULL );
 
 	return viewport_gl_area_w;
 }
 
 
-/* Returns TRUE if GL is available (replaces gdk_gl_query) */
+/* Returns TRUE if GL is available */
 gboolean
 ogl_gl_query( void )
 {
-	GdkDisplay *gdk_display;
-	Display *xdisplay;
-	int error_base, event_base;
-
-	gdk_display = gdk_display_get_default( );
-	if (gdk_display == NULL)
-		return FALSE;
-
-	/* Until we migrate to GtkGLArea (Phase 2), we need an X11 display */
-	if (!GDK_IS_X11_DISPLAY( gdk_display ))
-		return FALSE;
-
-	xdisplay = GDK_DISPLAY_XDISPLAY( gdk_display );
-	return glXQueryExtension( xdisplay, &error_base, &event_base );
+	/* GtkGLArea handles GL capability detection.
+	 * Errors are reported via gtk_gl_area_get_error() after realization. */
+	return TRUE;
 }
 
 

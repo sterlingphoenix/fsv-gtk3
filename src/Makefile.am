@@ -11,8 +11,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib \
 	$(DEBUG_CFLAGS) \
 	@GTK_CFLAGS@ \
-	@GL_CFLAGS@ \
-	@X11_CFLAGS@
+	@EPOXY_CFLAGS@
 
 AM_CFLAGS = \
 	-Wno-incompatible-pointer-types
@@ -64,9 +63,8 @@ fsv_SOURCES = \
 fsv_LDADD = \
 	$(DEBUG_LIBS) \
 	$(top_builddir)/lib/libmisc.a \
-	@GL_LIBS@ \
 	@GTK_LIBS@ \
-	@X11_LIBS@
+	@EPOXY_LIBS@
 
 EXTRA_DIST = \
 	xmaps/back.xpm \

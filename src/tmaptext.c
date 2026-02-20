@@ -25,8 +25,7 @@
 #include "common.h"
 #include "tmaptext.h"
 
-#include <GL/gl.h>
-#include <GL/glu.h> /* gluBuild2DMipmaps( ) */
+#include <epoxy/gl.h>
 
 /* Bitmap font definition */
 #define char_width 16
@@ -104,9 +103,10 @@ text_init( void )
 	glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
 	charset_pixels = xbm_pixels( charset_bits, charset_width * charset_height );
 #ifdef TEXT_USE_MIPMAPS
-	gluBuild2DMipmaps( GL_TEXTURE_2D, GL_INTENSITY4, charset_width, charset_height, GL_LUMINANCE, GL_UNSIGNED_BYTE, charset_pixels );
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_INTENSITY4, charset_width, charset_height, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, charset_pixels );
+	glGenerateMipmap( GL_TEXTURE_2D );
 #else
-	glTexImage2D( GL_TEXTURE_2D, 0, GL_INTENSITY4, charset_width, charset_height, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, charset_pixels );*/
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_INTENSITY4, charset_width, charset_height, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, charset_pixels );
 #endif
 	xfree( charset_pixels );
 }

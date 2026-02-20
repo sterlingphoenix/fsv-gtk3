@@ -687,7 +687,6 @@ gui_gl_area_add( GtkWidget *parent_w )
 	int bitmask = 0;
 
 	gl_area_w = ogl_widget_new( );
-	bitmask |= GDK_EXPOSURE_MASK;
 	bitmask |= GDK_POINTER_MOTION_MASK;
 	bitmask |= GDK_BUTTON_MOTION_MASK;
 	bitmask |= GDK_BUTTON1_MOTION_MASK;
@@ -697,7 +696,6 @@ gui_gl_area_add( GtkWidget *parent_w )
 	bitmask |= GDK_BUTTON_RELEASE_MASK;
 	bitmask |= GDK_LEAVE_NOTIFY_MASK;
 	bitmask |= GDK_SCROLL_MASK;
-	bitmask |= GDK_STRUCTURE_MASK;
 	gtk_widget_set_events( GTK_WIDGET(gl_area_w), bitmask );
 	parent_child_full( parent_w, gl_area_w, EXPAND, FILL );
 
@@ -1016,13 +1014,12 @@ gui_preview_add( GtkWidget *parent_w )
 }
 
 
-/* Expose/draw callback for the spectrum drawing area */
+/* Draw callback for the spectrum drawing area */
 static gboolean
-preview_spectrum_expose_cb( GtkWidget *drawing_w, GdkEventExpose *event, gpointer data )
+preview_spectrum_draw_cb( GtkWidget *drawing_w, cairo_t *cr, gpointer data )
 {
 	RGBcolor (*spectrum_func)( double x );
 	RGBcolor color;
-	cairo_t *cr;
 	int width, height;
 	int i;
 
@@ -1039,8 +1036,6 @@ preview_spectrum_expose_cb( GtkWidget *drawing_w, GdkEventExpose *event, gpointe
 	if (width <= 0 || height <= 0)
 		return FALSE;
 
-	cr = gdk_cairo_create( gtk_widget_get_window( drawing_w ) );
-
 	/* Draw spectrum as vertical 1-pixel-wide stripes */
 	for (i = 0; i < width; i++) {
 		color = (spectrum_func)( (double)i / (double)(width - 1) );
@@ -1049,7 +1044,6 @@ preview_spectrum_expose_cb( GtkWidget *drawing_w, GdkEventExpose *event, gpointe
 		cairo_fill( cr );
 	}
 
-	cairo_destroy( cr );
 	return FALSE;
 }
 
@@ -1070,7 +1064,7 @@ gui_preview_spectrum( GtkWidget *preview_w, RGBcolor (*spectrum_func)( double x 
 	g_object_set_data( G_OBJECT(preview_w), data_key, (void *)spectrum_func );
 
 	if (first_time) {
-		g_signal_connect( G_OBJECT(preview_w), "expose_event", G_CALLBACK(preview_spectrum_expose_cb), NULL );
+		g_signal_connect( G_OBJECT(preview_w), "draw", G_CALLBACK(preview_spectrum_draw_cb), NULL );
 	}
 
 	/* Trigger redraw */

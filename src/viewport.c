@@ -101,21 +101,9 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 	boolean btn1, btn2, btn3;
 	boolean ctrl_key;
 
-	/* Handle low-level GL area widget events */
-	switch (event->type) {
-		case GDK_EXPOSE:
-		/* Handled by ogl.c expose_cb which renders directly */
+	/* GtkGLArea handles expose/configure via its own signals */
+	if (event->type == GDK_CONFIGURE)
 		return FALSE;
-
-		case GDK_CONFIGURE:
-		ogl_make_current( );
-		ogl_resize( );
-		return FALSE;
-
-		default:
-		/* Event is probably coming from the mouse */
-		break;
-	}
 
 	if (event->type == GDK_BUTTON_PRESS) {
 		/* Exit the About presentation if it is up */
