@@ -1,0 +1,24 @@
+language: c
+sudo: false
+
+compiler:
+  - clang
+  - gcc
+
+install:
+  - ./autogen.sh
+  - ./configure --prefix=/tmp/fsv
+  - make
+  - make install
+
+script:
+  - make check
+# TODO: we should run some tests here
+
+addons:
+  apt:
+    packages:
+      - libgtk2.0-dev
+      - libgl1-mesa-dev
+      - libglu1-mesa-dev
+      - libgtkgl2.0-dev

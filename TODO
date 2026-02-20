@@ -1,0 +1,153 @@
+FSV GTK3 Migration Plan
+========================
+
+Goal: Migrate from GTK+ 2.0 to GTK 3, with pragmatic middle-of-the-road
+library choices. Each step should leave the code compilable and runnable.
+
+
+PHASE 1: GTK 3 TRIVIAL RENAMES (mechanical changes, low risk)  *** DONE ***
+==============================================================
+
+Step 1.1 - Build system: switch to GTK 3 pkg-config
+  [x] configure.ac: change gtk+-2.0 to gtk+-3.0 >= 3.16
+  [x] README.md: update dependency list (libgtk-3-dev replaces libgtk2.0-dev,
+      drop libgtkgl2.0-dev)
+  [x] Verify ./autogen.sh && ./configure completes
+
+Step 1.2 - Replace deprecated box/pane/separator/scrollbar constructors
+  [x] gtk_hbox_new()        -> gtk_box_new(GTK_ORIENTATION_HORIZONTAL, ...)
+  [x] gtk_vbox_new()        -> gtk_box_new(GTK_ORIENTATION_VERTICAL, ...)
+  [x] gtk_hpaned_new()      -> gtk_paned_new(GTK_ORIENTATION_HORIZONTAL)
+  [x] gtk_vpaned_new()      -> gtk_paned_new(GTK_ORIENTATION_VERTICAL)
+  [x] gtk_hscrollbar_new()  -> gtk_scrollbar_new(GTK_ORIENTATION_HORIZONTAL, ...)
+  [x] gtk_vscrollbar_new()  -> gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, ...)
+  [x] gtk_hseparator_new()  -> gtk_separator_new(GTK_ORIENTATION_HORIZONTAL)
+  [x] (Also fix the #if 0 block: gtk_hscale_new, gtk_vscale_new -> gtk_scale_new)
+
+Step 1.3 - Replace GtkTable with GtkGrid
+  [x] gui_table_add(): gtk_table_new() -> gtk_grid_new()
+  [x] gui_table_attach(): gtk_table_attach() -> gtk_grid_attach()
+  [x] Update cell_padding to use gtk_grid_set_row/column_spacing()
+
+Step 1.4 - Replace deprecated GdkColor API with GdkRGBA
+  [x] gui.c color_picker_cb(): GdkColor -> GdkRGBA,
+      gtk_color_button_get_color() -> gtk_color_chooser_get_rgba()
+  [x] gui.c gui_colorpicker_set_color(): same
+  [x] gui.c colorsel_window_cb() and gui_colorsel_window():
+      GtkColorSelectionDialog -> GtkColorChooserDialog
+      gtk_color_selection_get_current_color() -> gtk_color_chooser_get_rgba()
+
+Step 1.5 - Fix direct struct field access (removed in GTK 3)
+  [x] GTK_ENTRY(entry_w)->text_length -> gtk_entry_get_text_length()
+  [x] GTK_STATUSBAR(statusbar_w)->messages -> gtk_statusbar_get_context_id()
+  [x] GTK_MENU(menu_w)->parent_menu_item -> gtk_menu_get_attach_widget()
+  [x] GtkAdjustment direct field access -> getter/setter functions
+      (camera.c: introduced AdjValues struct as intermediary)
+  [x] GTK_CHECK_MENU_ITEM(menuitem)->active ->
+      gtk_check_menu_item_get_active()  (callbacks.c)
+  [x] togglebutton->active -> gtk_toggle_button_get_active()  (callbacks.c)
+
+Step 1.6 - Replace other deprecated GTK 2 APIs
+  [x] gdk_cursor_unref() -> g_object_unref()
+  [x] gdk_screen_get_width()/gdk_screen_get_default() ->
+      GdkDisplay + GdkMonitor + gdk_monitor_get_geometry()
+  [x] GTK_STOCK_CANCEL / GTK_STOCK_OK -> "_Cancel" / "_OK" strings
+  [x] gtk_menu_item_set_right_justified() -> gtk_widget_set_hexpand/halign
+  [x] gtk_menu_popup() -> gtk_menu_popup_at_pointer()
+  [x] gtk_entry_set_editable() -> gtk_editable_set_editable()
+  [x] GtkStyle/gtk_widget_get_style() -> GtkStyleContext
+  [x] gdk_window_set_back_pixmap() -> gdk_window_set_background_pattern()
+  [x] gtk_widget_set_double_buffered() -> gtk_widget_set_app_paintable()
+  [x] gtk_widget_set_events() left as-is (still works in GTK 3)
+  [x] Build and verify compilation -- PASSES (deprecation warnings only)
+
+  Remaining deprecation warnings (acceptable for Phase 1):
+  - gdk_window_set_background_pattern (ogl.c) -- Phase 2 will remove
+  - gdk_cairo_create (gui.c) -- Phase 2 will use "draw" signal
+  - gtk_style_context_get_background_color (dialog.c) -- cosmetic
+
+
+PHASE 2: OPENGL WIDGET MIGRATION (the big one)
+===============================================
+
+Step 2.1 - Replace expose-event with draw signal
+  [ ] ogl.c expose_cb(): change from "expose-event" (GdkEventExpose) to
+      "draw" signal (cairo_t *cr parameter)
+  [ ] gui.c preview_spectrum_expose_cb(): same change
+  [ ] gui.c: remove gdk_cairo_create() calls (draw signal provides cr)
+
+Step 2.2 - Replace manual GLX with GtkGLArea
+  [ ] ogl.c: replace GtkDrawingArea + manual GLX with GtkGLArea
+  [ ] Remove glXChooseVisual(), glXCreateContext(), glXMakeCurrent(),
+      glXSwapBuffers() - GtkGLArea handles all of this
+  [ ] Replace realize_cb with GtkGLArea "realize" signal
+  [ ] Replace expose_cb/draw with GtkGLArea "render" signal
+  [ ] Replace configure_cb with GtkGLArea "resize" signal
+  [ ] Remove gdk_window_set_background_pattern() calls (not needed)
+  [ ] Remove gtk_widget_set_app_paintable() call (not needed)
+  [ ] ogl_widget_new(): return gtk_gl_area_new() instead
+  [ ] ogl_make_current(): use gtk_gl_area_make_current()
+  [ ] ogl_gl_query(): simplify or remove (GtkGLArea handles capability)
+  [ ] Update configure.ac: remove manual GL/GLX checks, add epoxy dependency
+  [ ] Remove X11 pkg-config dependency if no longer directly used
+  [ ] src/Makefile.am: update CFLAGS/LIBS
+
+Step 2.3 - Replace GLU usage
+  [ ] tmaptext.c: gluBuild2DMipmaps() -> glGenerateMipmap() (requires
+      GL 3.0+) or manual mipmap generation
+  [ ] configure.ac: remove GLU dependency check and -lGLU
+  [ ] Remove #include <GL/glu.h>
+
+Step 2.4 - Replace GL/gl.h with epoxy/gl.h
+  [ ] All files including <GL/gl.h>: change to <epoxy/gl.h>
+  [ ] Remove <GL/glx.h> includes (no longer needed)
+  [ ] This gives us proper function pointer loading on all platforms
+
+
+PHASE 3: CLEANUP AND POLISH
+============================
+
+Step 3.1 - Update entry API for GTK 3
+  [ ] gtk_entry_set_text() / gtk_entry_get_text() ->
+      gtk_editable_set_text() / gtk_editable_get_text()
+      (deprecated in 3.24+ but still works; note for future GTK 4 move)
+  [ ] gtk_entry_select_region() -> gtk_editable_select_region()
+
+Step 3.2 - Remove -Wno-incompatible-pointer-types compiler flag
+  [ ] Fix the underlying type mismatches that require this flag
+  [ ] src/Makefile.am: remove the flag
+
+Step 3.3 - Update build documentation
+  [ ] README.md: note minimum GTK 3 version (3.16+ for GtkGLArea)
+  [ ] README.md: note that Wayland is now supported (after Phase 2)
+
+Step 3.4 - Clean up dead code
+  [ ] Review and either port or remove the #if 0 block in gui.c
+      (contains gtk_tooltips_new etc. which are removed in GTK 3;
+       GTK 3 uses gtk_widget_set_tooltip_text() instead)
+  [ ] Remove any remaining GTK 2 compatibility defines
+
+Step 3.5 - Final verification
+  [ ] Build with no warnings (beyond upstream GTK deprecations)
+  [ ] Test all three visualization modes (DiscV, MapV, TreeV)
+  [ ] Test directory tree expand/collapse
+  [ ] Test file list population
+  [ ] Test color mode switching
+  [ ] Test About screen
+  [ ] Test on Wayland session
+  [ ] Test on X11 session
+
+
+NOTES
+=====
+- Each step should leave the code compilable and runnable
+- User tests after each phase completion
+- The #if 0 block in gui.c (lines 1472-1605) contains unused code with
+  additional deprecated APIs (GtkTooltips, gtk_check_menu_item_set_show_toggle).
+  We can either port or delete it.
+- geometry.c uses ~267 legacy GL calls (glBegin/glEnd, display lists, etc.)
+  These work fine under GL compatibility profile and are NOT changed in this
+  migration. A future project can move to modern GL core profile.
+- The nvstore.c library is self-contained and needs no changes.
+- The lib/getopt.c, lib/getopt1.c, lib/scandir.c, lib/fileblocks.c are
+  POSIX polyfills and need no changes.
