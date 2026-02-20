@@ -295,12 +295,10 @@ csdialog_time_color_picker_set_access( boolean enabled )
 		gui_colorpicker_set_color( csdialog.time.new_colorpicker_w, color );
 	}
 	else {
-		GtkStyleContext *ctx = gtk_widget_get_style_context( csdialog.time.old_colorpicker_w );
-		GdkRGBA rgba;
-		gtk_style_context_get_background_color( ctx, GTK_STATE_FLAG_NORMAL, &rgba );
-		disabled_color.r = (float)rgba.red;
-		disabled_color.g = (float)rgba.green;
-		disabled_color.b = (float)rgba.blue;
+		/* Neutral gray to indicate disabled state */
+		disabled_color.r = 0.75f;
+		disabled_color.g = 0.75f;
+		disabled_color.b = 0.75f;
 		gui_colorpicker_set_color( csdialog.time.old_colorpicker_w, &disabled_color );
 		gui_colorpicker_set_color( csdialog.time.new_colorpicker_w, &disabled_color );
 	}

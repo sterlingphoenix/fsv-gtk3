@@ -247,10 +247,15 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		/* Scroll wheel zoom */
 		if (!camera_moving( )) {
 			GdkEventScroll *ev_scroll = (GdkEventScroll *)event;
+			double delta = 0.0;
 			if (ev_scroll->direction == GDK_SCROLL_UP)
-				camera_dolly( -16.0 );
+				delta = -1.0;
 			else if (ev_scroll->direction == GDK_SCROLL_DOWN)
-				camera_dolly( 16.0 );
+				delta = 1.0;
+			else if (ev_scroll->direction == GDK_SCROLL_SMOOTH)
+				delta = ev_scroll->delta_y;
+			if (delta != 0.0)
+				camera_dolly( delta * 16.0 );
 			indicated_node = NULL;
 		}
 		break;

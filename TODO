@@ -152,6 +152,39 @@ Step 3.5 - Final verification
   [ ] Test on X11 session
 
 
+PHASE 4: MESON BUILD SYSTEM (replace autotools)  *** DONE ***
+=================================================
+
+Step 4.1 - Create meson.build files
+  [x] Top-level meson.build: project definition, dependencies (gtk+-3.0,
+      epoxy, libm), config.h generation, debug option, file command detection
+  [x] lib/meson.build: static library for getopt/nvstore polyfills
+  [x] debug/meson.build: optional debug library (fsv_debug option)
+  [x] Wire up src/ sources, include paths, link flags
+  [x] meson_options.txt: fsv_debug boolean option
+  [x] Verify: meson setup builddir && ninja -C builddir
+
+Step 4.2 - Remove autotools files
+  [x] git rm: autogen.sh, configure.ac, configure~, Makefile.am,
+      src/Makefile.am, lib/Makefile.am, debug/Makefile.am
+  [x] git rm: config.rpath, mkinstalldirs, stamp-h.in
+  [x] git rm: fsv.spec.in, fsv.wmconfig, ABOUT-NLS, .travis.yml
+  [x] Remove generated files: configure, config.status, config.log,
+      config.h, Makefile, */Makefile, */.deps, autom4te.cache, *.o, *.a
+  [x] Clean up doc/ directory (only contained generated Makefile artifacts)
+
+Step 4.3 - Update README.md and .gitignore
+  [x] README.md: replace autogen.sh/configure/make instructions with
+      meson setup / ninja
+  [x] .gitignore: replace autotools entries with meson builddir
+
+Step 4.4 - Final verification
+  [x] Clean build from scratch: meson setup builddir && ninja -C builddir
+  [x] Binary runs and shows version 2.31
+  [ ] Test all three visualization modes (DiscV, MapV, TreeV)
+  [ ] Test on Wayland and X11 sessions
+
+
 NOTES
 =====
 - Each step should leave the code compilable and runnable

@@ -696,6 +696,7 @@ gui_gl_area_add( GtkWidget *parent_w )
 	bitmask |= GDK_BUTTON_RELEASE_MASK;
 	bitmask |= GDK_LEAVE_NOTIFY_MASK;
 	bitmask |= GDK_SCROLL_MASK;
+	bitmask |= GDK_SMOOTH_SCROLL_MASK;
 	gtk_widget_set_events( GTK_WIDGET(gl_area_w), bitmask );
 	parent_child_full( parent_w, gl_area_w, EXPAND, FILL );
 

@@ -1,0 +1,2 @@
+option('fsv_debug', type : 'boolean', value : false,
+  description : 'Enable fsv debug memory tracking')

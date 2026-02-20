@@ -2,7 +2,7 @@
 
 NOTE: this project **is** actively maintained! However, it is a stepping stone to a complete modernisation. 
 
-This is the fork that updates from gtk1 to gtk3. This enables building on a modern Linux system (test case was Ubuntu 25.10).
+This is the fork that updates from gtk2 to gtk3. This enables building on a modern Linux system (test case was Ubuntu 25.10).
 
 
 This repo is a fork of [fsv](https://github.com/mcuelenaere/fsv), which is itself a fork of [fsv](http://fsv.sourceforge.net/).
@@ -33,11 +33,10 @@ you may need to fall back to X11: `GDK_BACKEND=x11 fsv /path`.
 
 **Install**
 
-1. `sudo apt-get install libgtk-3-dev libepoxy-dev`
+1. `sudo apt-get install libgtk-3-dev libepoxy-dev meson ninja-build`
 2. Clone the repository
-3. Run `./autogen.sh`
-4. Do the install dance:
-    - `./configure`
-    - `make`
-    - `sudo make install`
+3. Build:
+    - `meson setup builddir`
+    - `ninja -C builddir`
+    - `sudo ninja -C builddir install`
 
