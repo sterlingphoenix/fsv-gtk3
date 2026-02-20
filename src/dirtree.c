@@ -169,7 +169,7 @@ dirtree_select_cb( GtkWidget *tree_w, GdkEventButton *ev_button )
 
 /* Callback for collapse of a directory tree entry */
 static void
-dirtree_collapse_cb( GtkTreeView *tree_view, GtkTreeIter *iter, GtkTreePath *path, gpointer user_data )
+dirtree_collapse_cb( G_GNUC_UNUSED GtkTreeView *tree_view, GtkTreeIter *iter, G_GNUC_UNUSED GtkTreePath *path, G_GNUC_UNUSED gpointer user_data )
 {
 	GtkTreeStore *store;
 	GNode *dnode;
@@ -191,7 +191,7 @@ dirtree_collapse_cb( GtkTreeView *tree_view, GtkTreeIter *iter, GtkTreePath *pat
 
 /* Callback for expand of a directory tree entry */
 static void
-dirtree_expand_cb( GtkTreeView *tree_view, GtkTreeIter *iter, GtkTreePath *path, gpointer user_data )
+dirtree_expand_cb( G_GNUC_UNUSED GtkTreeView *tree_view, GtkTreeIter *iter, G_GNUC_UNUSED GtkTreePath *path, G_GNUC_UNUSED gpointer user_data )
 {
 	GtkTreeStore *store;
 	GNode *dnode;

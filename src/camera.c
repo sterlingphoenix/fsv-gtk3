@@ -1043,7 +1043,7 @@ treev_look_at( GNode *node, MorphType mtype, double pan_time_override )
 
 /* Step callback for camera panning */
 static void
-pan_step_cb( Morph *unused )
+pan_step_cb( G_GNUC_UNUSED Morph *unused )
 {
 	globals.need_redraw = TRUE;
 	camera_update_scrollbars( FALSE );

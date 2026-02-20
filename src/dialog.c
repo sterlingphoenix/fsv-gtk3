@@ -58,24 +58,11 @@ dialog_pass_main_window_widget( GtkWidget *window_w )
 
 /* Callback to close a dialog window */
 static void
-close_cb( GtkWidget *unused, GtkWidget *window_w )
+close_cb( G_GNUC_UNUSED GtkWidget *unused, GtkWidget *window_w )
 {
 	gtk_widget_destroy( window_w );
 }
 
-
-/* End callback to allow time-bombed transient dialogs */
-static void
-transient_end_cb( Morph *morph )
-{
-	GtkWidget *window_w;
-
-	window_w = (GtkWidget *)morph->data;
-	gtk_widget_destroy( window_w );
-
-	/* Restore normal mouse cursor */
-	gui_cursor( main_window_w, -1 );
-}
 
 
 /**** File -> Change root... ****/
@@ -555,7 +542,7 @@ csdialog_wpattern_clist_click_cb( GtkWidget *tree_w, GdkEventButton *ev_button )
 
 /* Callback for selection change in the wildcard pattern list */
 static void
-csdialog_wpattern_clist_selection_changed_cb( GtkTreeSelection *sel, gpointer user_data )
+csdialog_wpattern_clist_selection_changed_cb( GtkTreeSelection *sel, G_GNUC_UNUSED gpointer user_data )
 {
 	GtkTreeModel *model;
 	GtkTreeIter iter;
@@ -602,8 +589,8 @@ csdialog_wpattern_clist_selection_changed_cb( GtkTreeSelection *sel, gpointer us
 
 /* Selection function: prevent header rows from being selected */
 static gboolean
-csdialog_wpattern_selection_func( GtkTreeSelection *sel, GtkTreeModel *model,
-	GtkTreePath *path, gboolean currently_selected, gpointer data )
+csdialog_wpattern_selection_func( G_GNUC_UNUSED GtkTreeSelection *sel, GtkTreeModel *model,
+	GtkTreePath *path, gboolean currently_selected, G_GNUC_UNUSED gpointer data )
 {
 	GtkTreeIter iter;
 	int row_type;
@@ -666,7 +653,6 @@ csdialog_wpattern_new_color_selection_cb( RGBcolor *selected_color, struct WPLis
 static void
 csdialog_wpattern_edit_cb( const char *input_text, struct WPListRowData *row_data )
 {
-	GList *l; /* for debugging */
 	char *wpattern;
 
 	/* Trim leading/trailing whitespace in input */
@@ -690,8 +676,7 @@ csdialog_wpattern_edit_cb( const char *input_text, struct WPListRowData *row_dat
 	switch (row_data->row_type) {
 		case WPLIST_WPATTERN_ROW:
 		/* Update existing pattern */
-		l = g_list_replace( row_data->wpgroup->wp_list, row_data->wpattern, wpattern );
-		g_assert( l != NULL );
+		g_assert( g_list_replace( row_data->wpgroup->wp_list, row_data->wpattern, wpattern ) != NULL );
 		xfree( row_data->wpattern );
 		break;
 
@@ -813,7 +798,7 @@ csdialog_wpattern_button_cb( GtkWidget *button_w )
 
 /* Callback for the "OK" button */
 static void
-csdialog_ok_button_cb( GtkWidget *unused, GtkWidget *window_w )
+csdialog_ok_button_cb( G_GNUC_UNUSED GtkWidget *unused, GtkWidget *window_w )
 {
 	ColorMode mode;
 
@@ -831,7 +816,7 @@ csdialog_ok_button_cb( GtkWidget *unused, GtkWidget *window_w )
 
 /* Callback for dialog window destruction */
 static void
-csdialog_destroy_cb( GObject *unused )
+csdialog_destroy_cb( G_GNUC_UNUSED GObject *unused )
 {
 	/* We'd leak memory like crazy if we didn't do this */
 	color_config_destroy( &csdialog.color_config );
@@ -1075,7 +1060,7 @@ dialog_color_setup( void )
 /* Callback for the "Look at target node" button on the "Target" page
  * of the Properties dialog for symlinks */
 static void
-look_at_target_node_cb( GtkWidget *unused, GNode *node )
+look_at_target_node_cb( G_GNUC_UNUSED GtkWidget *unused, GNode *node )
 {
 	/* Target node may be buried inside a collapsed tree--
 	 * if it is, expand it out into the open */
@@ -1350,7 +1335,7 @@ dialog_node_properties( GNode *node )
 
 /* Helper callback for context_menu( ) */
 static void
-collapse_cb( GtkWidget *unused, GNode *dnode )
+collapse_cb( G_GNUC_UNUSED GtkWidget *unused, GNode *dnode )
 {
 	colexp( dnode, COLEXP_COLLAPSE_RECURSIVE );
 }
@@ -1358,7 +1343,7 @@ collapse_cb( GtkWidget *unused, GNode *dnode )
 
 /* ditto */
 static void
-expand_cb( GtkWidget *unused, GNode *dnode )
+expand_cb( G_GNUC_UNUSED GtkWidget *unused, GNode *dnode )
 {
 	colexp( dnode, COLEXP_EXPAND );
 }
@@ -1366,7 +1351,7 @@ expand_cb( GtkWidget *unused, GNode *dnode )
 
 /* ditto */
 static void
-expand_recursive_cb( GtkWidget *unused, GNode *dnode )
+expand_recursive_cb( G_GNUC_UNUSED GtkWidget *unused, GNode *dnode )
 {
 	colexp( dnode, COLEXP_EXPAND_RECURSIVE );
 }
@@ -1374,7 +1359,7 @@ expand_recursive_cb( GtkWidget *unused, GNode *dnode )
 
 /* ditto */
 static void
-look_at_cb( GtkWidget *unused, GNode *node )
+look_at_cb( G_GNUC_UNUSED GtkWidget *unused, GNode *node )
 {
 	camera_look_at( node );
 }
@@ -1382,7 +1367,7 @@ look_at_cb( GtkWidget *unused, GNode *node )
 
 /* ditto */
 static void
-properties_cb( GtkWidget *unused, GNode *node )
+properties_cb( G_GNUC_UNUSED GtkWidget *unused, GNode *node )
 {
 	dialog_node_properties( node );
 }

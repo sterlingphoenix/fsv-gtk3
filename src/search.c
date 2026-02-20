@@ -156,7 +156,7 @@ search_navigate_to_result( int index )
 
 /* Callback: user pressed Enter in search entry */
 static void
-search_execute_cb( GtkWidget *widget, gpointer data )
+search_execute_cb( G_GNUC_UNUSED GtkWidget *widget, G_GNUC_UNUSED gpointer data )
 {
 	const char *pattern;
 
@@ -190,7 +190,7 @@ search_execute_cb( GtkWidget *widget, gpointer data )
 
 /* Callback: user clicked Next button */
 static void
-search_next_cb( GtkWidget *widget, gpointer data )
+search_next_cb( G_GNUC_UNUSED GtkWidget *widget, G_GNUC_UNUSED gpointer data )
 {
 	if (search_result_count <= 0)
 		return;

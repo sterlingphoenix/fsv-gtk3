@@ -504,7 +504,7 @@ get_file_type_desc( const char *filename )
 
 		/* Check for timeout condition */
 		if ((xgettime( ) - t0) > 5.0) {
-			fclose( cmd ); /* Is this allowed? */
+			pclose( cmd );
 			strcpy( cmd_output, _("('file' command timed out)") );
 			return cmd_output;
 		}
@@ -635,7 +635,7 @@ absname_merge( const char *dirname, const char *rel_name )
 			}
 			else
 				prev_char_is_slash = TRUE;
-			/* !break */
+			/* fallthrough */
 
 			case '\0':
 			/* End of absolute name reached */

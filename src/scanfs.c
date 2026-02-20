@@ -197,8 +197,8 @@ process_dir( const char *dir, GNode *dnode )
 
 
 /* Dynamic scan progress readout */
-static boolean
-scan_monitor( void )
+static gboolean
+scan_monitor( G_GNUC_UNUSED gpointer user_data )
 {
 	char strbuf[64];
 
@@ -293,7 +293,7 @@ setup_fstree_recursive( GNode *node, GNode **node_table )
 
 /* Callback for g_node_traverse to free node descriptor data */
 static gboolean
-free_node_data_cb( GNode *node, gpointer data )
+free_node_data_cb( GNode *node, G_GNUC_UNUSED gpointer data )
 {
 	if (node->data != NULL) {
 		if (NODE_IS_DIR(node))
@@ -366,7 +366,7 @@ scanfs( const char *dir )
 
 	/* GUI stuff */
 	filelist_scan_monitor_init( );
-	handler_id = g_timeout_add( SCAN_MONITOR_PERIOD, (GSourceFunc)scan_monitor, NULL );
+	handler_id = g_timeout_add( SCAN_MONITOR_PERIOD, scan_monitor, NULL );
 
 	/* Let the disk thrashing begin */
 	process_dir( root_dir, root_dnode );

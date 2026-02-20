@@ -172,7 +172,7 @@ draw_text( void )
 
 /* Progress callback; keeps viewport updated during presentation */
 static void
-about_progress_cb( Morph *unused )
+about_progress_cb( G_GNUC_UNUSED Morph *unused )
 {
 	globals.need_redraw = TRUE;
 }

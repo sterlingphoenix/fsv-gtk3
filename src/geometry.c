@@ -559,31 +559,6 @@ discv_gldraw_cursor( XYvec pos, double radius )
 }
 
 
-static void
-discv_draw_cursor_between( GNode *a_node, GNode *b_node, double k )
-{
-	XYvec *a_pos, *b_pos;
-	XYvec cursor_pos;
-	double a_radius, b_radius, cursor_radius;
-
-	a_pos = geometry_discv_node_pos( a_node );
-	cursor_pos.x = a_pos->x;
-	cursor_pos.y = a_pos->y;
-	a_radius = DISCV_GEOM_PARAMS(a_node)->radius;
-
-	b_pos = geometry_discv_node_pos( b_node );
-	b_radius = DISCV_GEOM_PARAMS(b_node)->radius;
-
-	cursor_pos.x = INTERPOLATE(k, cursor_pos.x, b_pos->x);
-	cursor_pos.y = INTERPOLATE(k, cursor_pos.y, b_pos->y);
-	cursor_radius = INTERPOLATE(k, a_radius, b_radius);
-
-	/* Slight margin around the disc */
-	cursor_radius *= 1.0625;
-
-	discv_gldraw_cursor( cursor_pos, cursor_radius );
-}
-
 
 /* Draws the node cursor in an intermediate position between its previous
  * steady-state position and the current node */

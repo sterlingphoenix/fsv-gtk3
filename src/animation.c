@@ -411,8 +411,8 @@ framerate_iteration( int mesg )
 
 
 /* Top-level animation loop */
-static boolean
-animation_loop( void )
+static gboolean
+animation_loop( G_GNUC_UNUSED gpointer user_data )
 {
 	boolean state_changed, schevents_pending = FALSE;
 
@@ -454,7 +454,7 @@ redraw( void )
 	 * animation loop isn't starved by GTK 3's frame clock and other
 	 * internal events that run at higher priorities. */
 	if (!animation_active)
-		g_idle_add_full( G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)animation_loop, NULL, NULL );
+		g_idle_add_full( G_PRIORITY_DEFAULT_IDLE, animation_loop, NULL, NULL );
 
 	animation_active = TRUE;
 	globals.need_redraw = TRUE;

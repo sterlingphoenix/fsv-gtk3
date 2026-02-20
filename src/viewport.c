@@ -94,12 +94,10 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 {
 	GdkEventButton *ev_button;
 	GdkEventMotion *ev_motion;
-	GNode *node;
 	double dx, dy;
 	unsigned int face_id;
 	int x, y;
 	boolean btn1, btn2, btn3;
-	boolean ctrl_key;
 
 	/* GtkGLArea handles expose/configure via its own signals */
 	if (event->type == GDK_CONFIGURE)

@@ -300,7 +300,7 @@ ogl_color_pick( int x, int y, unsigned int *face_id )
 
 /* GtkGLArea "realize" signal handler */
 static void
-realize_cb( GtkWidget *widget, gpointer user_data )
+realize_cb( GtkWidget *widget, G_GNUC_UNUSED gpointer user_data )
 {
 	gtk_gl_area_make_current( GTK_GL_AREA(widget) );
 	if (gtk_gl_area_get_error( GTK_GL_AREA(widget) ) != NULL)
@@ -315,7 +315,7 @@ realize_cb( GtkWidget *widget, gpointer user_data )
 
 /* GtkGLArea "render" signal handler */
 static gboolean
-render_cb( GtkGLArea *area, GdkGLContext *context, gpointer user_data )
+render_cb( G_GNUC_UNUSED GtkGLArea *area, G_GNUC_UNUSED GdkGLContext *context, G_GNUC_UNUSED gpointer user_data )
 {
 	ogl_draw( );
 	return TRUE;
@@ -324,7 +324,7 @@ render_cb( GtkGLArea *area, GdkGLContext *context, gpointer user_data )
 
 /* GtkGLArea "resize" signal handler */
 static void
-resize_cb( GtkGLArea *area, gint width, gint height, gpointer user_data )
+resize_cb( G_GNUC_UNUSED GtkGLArea *area, gint width, gint height, G_GNUC_UNUSED gpointer user_data )
 {
 	glViewport( 0, 0, width, height );
 }

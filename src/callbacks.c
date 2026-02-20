@@ -48,7 +48,7 @@
 
 /* File -> Change root... */
 void
-on_file_change_root_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_file_change_root_activate( G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	dialog_change_root( );
 }
@@ -56,7 +56,7 @@ on_file_change_root_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* File -> Save settings */
 void
-on_file_save_settings_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_file_save_settings_activate( G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	fsv_write_config( );
 }
@@ -64,7 +64,7 @@ on_file_save_settings_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* File -> Exit */
 void
-on_file_exit_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_file_exit_activate( G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	exit( EXIT_SUCCESS );
 }
@@ -72,7 +72,7 @@ on_file_exit_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Vis -> DiscV */
 void
-on_vis_discv_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_vis_discv_activate( GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	IGNORE_MENU_ITEM_DESELECT(menuitem);
 	if (globals.fsv_mode != FSV_DISCV)
@@ -82,7 +82,7 @@ on_vis_discv_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Vis -> MapV */
 void
-on_vis_mapv_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_vis_mapv_activate( GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	IGNORE_MENU_ITEM_DESELECT(menuitem);
 	if (globals.fsv_mode != FSV_MAPV)
@@ -92,7 +92,7 @@ on_vis_mapv_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Vis -> TreeV */
 void
-on_vis_treev_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_vis_treev_activate( GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	IGNORE_MENU_ITEM_DESELECT(menuitem);
 	if (globals.fsv_mode != FSV_TREEV)
@@ -102,7 +102,7 @@ on_vis_treev_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Colors -> By node type */
 void
-on_color_by_nodetype_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_color_by_nodetype_activate( GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	IGNORE_MENU_ITEM_DESELECT(menuitem);
 	color_set_mode( COLOR_BY_NODETYPE );
@@ -111,7 +111,7 @@ on_color_by_nodetype_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Colors -> By timestamp */
 void
-on_color_by_timestamp_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_color_by_timestamp_activate( GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	IGNORE_MENU_ITEM_DESELECT(menuitem);
 	color_set_mode( COLOR_BY_TIMESTAMP );
@@ -120,7 +120,7 @@ on_color_by_timestamp_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Colors -> By wildcards */
 void
-on_color_by_wildcards_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_color_by_wildcards_activate( GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	IGNORE_MENU_ITEM_DESELECT(menuitem);
 	color_set_mode( COLOR_BY_WPATTERN );
@@ -129,7 +129,7 @@ on_color_by_wildcards_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Colors -> Setup... */
 void
-on_color_setup_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_color_setup_activate( G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	dialog_color_setup( );
 }
@@ -137,7 +137,7 @@ on_color_setup_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* Help -> About fsv... */
 void
-on_help_about_fsv_activate( GtkMenuItem *menuitem, gpointer user_data )
+on_help_about_fsv_activate( G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data )
 {
 	about( ABOUT_BEGIN );
 }
@@ -148,7 +148,7 @@ on_help_about_fsv_activate( GtkMenuItem *menuitem, gpointer user_data )
 
 /* "Back" button */
 void
-on_back_button_clicked( GtkButton *button, gpointer user_data )
+on_back_button_clicked( G_GNUC_UNUSED GtkButton *button, G_GNUC_UNUSED gpointer user_data )
 {
 	camera_look_at_previous( );
 }
@@ -156,7 +156,7 @@ on_back_button_clicked( GtkButton *button, gpointer user_data )
 
 /* "cd /" button */
 void
-on_cd_root_button_clicked( GtkButton *button, gpointer user_data )
+on_cd_root_button_clicked( G_GNUC_UNUSED GtkButton *button, G_GNUC_UNUSED gpointer user_data )
 {
 	camera_look_at( root_dnode );
 }
@@ -164,7 +164,7 @@ on_cd_root_button_clicked( GtkButton *button, gpointer user_data )
 
 /* "cd .." button */
 void
-on_cd_up_button_clicked( GtkButton *button, gpointer user_data )
+on_cd_up_button_clicked( G_GNUC_UNUSED GtkButton *button, G_GNUC_UNUSED gpointer user_data )
 {
 	if (NODE_IS_DIR(globals.current_node->parent))
 		camera_look_at( globals.current_node->parent );
@@ -173,7 +173,7 @@ on_cd_up_button_clicked( GtkButton *button, gpointer user_data )
 
 /* "Bird's-eye view" toggle button */
 void
-on_birdseye_view_togglebutton_toggled( GtkToggleButton *togglebutton, gpointer user_data )
+on_birdseye_view_togglebutton_toggled( GtkToggleButton *togglebutton, G_GNUC_UNUSED gpointer user_data )
 {
 	camera_birdseye_view( gtk_toggle_button_get_active( togglebutton ) );
 }

@@ -595,7 +595,7 @@ gui_cursor( GtkWidget *widget, int glyph )
 /* The date edit widget (imported from Gnomeland). The given callback is
  * called whenever the date/time is changed */
 GtkWidget *
-gui_dateedit_add( GtkWidget *parent_w, time_t the_time, GCallback callback, void *callback_data )
+gui_dateedit_add( GtkWidget *parent_w, G_GNUC_UNUSED time_t the_time, G_GNUC_UNUSED GCallback callback, G_GNUC_UNUSED void *callback_data )
 {
 	GtkWidget *dateedit_w;
 
@@ -610,7 +610,7 @@ gui_dateedit_add( GtkWidget *parent_w, time_t the_time, GCallback callback, void
 
 /* Reads current time from a date edit widget */
 time_t
-gui_dateedit_get_time( GtkWidget *dateedit_w )
+gui_dateedit_get_time( G_GNUC_UNUSED GtkWidget *dateedit_w )
 {
 	//return gnome_date_edit_get_date( GNOME_DATE_EDIT(dateedit_w) );
 	return 0;
@@ -619,7 +619,7 @@ gui_dateedit_get_time( GtkWidget *dateedit_w )
 
 /* Sets the time on a date edit widget */
 void
-gui_dateedit_set_time( GtkWidget *dateedit_w, time_t the_time )
+gui_dateedit_set_time( G_GNUC_UNUSED GtkWidget *dateedit_w, G_GNUC_UNUSED time_t the_time )
 {
 	//gnome_date_edit_set_time( GNOME_DATE_EDIT(dateedit_w), the_time );
 }
@@ -869,7 +869,7 @@ static int optmenu_item_count = 0;
 
 /* Callback dispatcher for combo box "changed" signal */
 static void
-option_menu_changed_cb( GtkComboBox *combo, gpointer data )
+option_menu_changed_cb( GtkComboBox *combo, G_GNUC_UNUSED gpointer data )
 {
 	struct OptionMenuItem *items;
 	int count;
@@ -1017,7 +1017,7 @@ gui_preview_add( GtkWidget *parent_w )
 
 /* Draw callback for the spectrum drawing area */
 static gboolean
-preview_spectrum_draw_cb( GtkWidget *drawing_w, cairo_t *cr, gpointer data )
+preview_spectrum_draw_cb( GtkWidget *drawing_w, cairo_t *cr, G_GNUC_UNUSED gpointer data )
 {
 	RGBcolor (*spectrum_func)( double x );
 	RGBcolor color;
@@ -1165,7 +1165,7 @@ gui_statusbar_message( GtkWidget *statusbar_w, const char *message )
 
 /* The grid (layout) widget (replaces GtkTable) */
 GtkWidget *
-gui_table_add( GtkWidget *parent_w, int num_rows, int num_cols, boolean homog, int cell_padding )
+gui_table_add( GtkWidget *parent_w, G_GNUC_UNUSED int num_rows, G_GNUC_UNUSED int num_cols, boolean homog, int cell_padding )
 {
 	GtkWidget *grid_w;
 
@@ -1226,7 +1226,7 @@ gui_widget_packing( GtkWidget *widget, boolean expand, boolean fill, boolean sta
 
 /* Internal callback for the color chooser dialog response */
 static void
-colorsel_window_response_cb( GtkDialog *dialog, gint response_id, gpointer user_data )
+colorsel_window_response_cb( GtkDialog *dialog, gint response_id, G_GNUC_UNUSED gpointer user_data )
 {
 	RGBcolor color;
 	GdkRGBA rgba;
@@ -1298,7 +1298,7 @@ gui_dialog_window( const char *title, GCallback close_callback )
 /* Internal callback for the text-entry window, called when the
  * OK button is pressed */
 static void
-entry_window_cb( GtkWidget *unused, GtkWidget *entry_window_w )
+entry_window_cb( G_GNUC_UNUSED GtkWidget *unused, GtkWidget *entry_window_w )
 {
 	GtkWidget *entry_w;
 	char *entry_text;
@@ -1376,7 +1376,7 @@ gui_entry_window( const char *title, const char *init_text, GCallback ok_callbac
 
 /* Internal callback for the file chooser dialog response */
 static void
-filesel_window_response_cb( GtkDialog *dialog, gint response_id, gpointer data )
+filesel_window_response_cb( GtkDialog *dialog, gint response_id, G_GNUC_UNUSED gpointer data )
 {
 	char *filename;
 	void (*user_callback)( const char *, void * );
@@ -1441,7 +1441,7 @@ gui_window_icon_xpm( GtkWidget *window_w, char **xpm_data )
 /* Helper function for gui_window_modalize( ), called upon the destruction
  * of the modal window */
 static void
-window_unmodalize( GObject *unused, GtkWidget *parent_window_w )
+window_unmodalize( G_GNUC_UNUSED GObject *unused, GtkWidget *parent_window_w )
 {
 	gtk_widget_set_sensitive( parent_window_w, TRUE );
 	gui_cursor( parent_window_w, -1 );
