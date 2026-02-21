@@ -37,6 +37,14 @@
 /* Main viewport OpenGL area widget */
 static GtkWidget *viewport_gl_area_w = NULL;
 
+/* Private FBO for color picking (keeps pick renders off the display FBO) */
+static GLuint pick_fbo = 0;
+static GLuint pick_color_rb = 0;
+static GLuint pick_depth_rb = 0;
+static int pick_fb_width = 0;
+static int pick_fb_height = 0;
+static boolean pick_fbo_valid = FALSE;
+
 
 /* Ensures the GL context is current (public interface) */
 void
@@ -227,8 +235,43 @@ ogl_draw( void )
 }
 
 
+/* Ensures the pick FBO exists and matches the viewport size */
+static void
+pick_fbo_ensure( int width, int height )
+{
+	if (pick_fbo != 0 && pick_fb_width == width && pick_fb_height == height)
+		return;
+
+	if (pick_fbo == 0) {
+		glGenFramebuffers( 1, &pick_fbo );
+		glGenRenderbuffers( 1, &pick_color_rb );
+		glGenRenderbuffers( 1, &pick_depth_rb );
+	}
+
+	glBindRenderbuffer( GL_RENDERBUFFER, pick_color_rb );
+	glRenderbufferStorage( GL_RENDERBUFFER, GL_RGBA8, width, height );
+	glBindRenderbuffer( GL_RENDERBUFFER, pick_depth_rb );
+	glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height );
+	glBindRenderbuffer( GL_RENDERBUFFER, 0 );
+
+	glBindFramebuffer( GL_FRAMEBUFFER, pick_fbo );
+	glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+		GL_RENDERBUFFER, pick_color_rb );
+	glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+		GL_RENDERBUFFER, pick_depth_rb );
+	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+
+	pick_fb_width = width;
+	pick_fb_height = height;
+	pick_fbo_valid = FALSE;
+}
+
+
 /* Color-buffer picking: renders the scene with node IDs encoded as colors,
  * then reads the pixel at (x,y) to determine which node is there.
+ * Uses a private FBO so the display framebuffer is never disturbed.
+ * The pick FBO is cached -- re-rendered only when invalidated by camera
+ * or scene changes (via ogl_pick_invalidate).
  * Returns the node ID (0 = no hit). face_id is set from the alpha channel. */
 unsigned int
 ogl_color_pick( int x, int y, unsigned int *face_id )
@@ -236,42 +279,56 @@ ogl_color_pick( int x, int y, unsigned int *face_id )
 	GLint viewport[4];
 	unsigned char pixel[4] = { 0, 0, 0, 0 };
 	unsigned int node_id;
-	float save_clear_color[4];
 
-	/* Ensure GL context and FBO are current */
+	/* Ensure GL context is current */
 	ogl_make_current( );
-	gtk_gl_area_attach_buffers( GTK_GL_AREA(viewport_gl_area_w) );
 
-	/* Save GL state */
-	glGetFloatv( GL_COLOR_CLEAR_VALUE, save_clear_color );
-	GLboolean save_lighting = glIsEnabled( GL_LIGHTING );
-	GLboolean save_texture = glIsEnabled( GL_TEXTURE_2D );
-	GLboolean save_blend = glIsEnabled( GL_BLEND );
-	GLboolean save_dither = glIsEnabled( GL_DITHER );
-	GLboolean save_fog = glIsEnabled( GL_FOG );
-	GLboolean save_alpha_test = glIsEnabled( GL_ALPHA_TEST );
-
-	/* Set up for color picking */
-	glDisable( GL_LIGHTING );
-	glDisable( GL_TEXTURE_2D );
-	glDisable( GL_BLEND );
-	glDisable( GL_DITHER );
-	glDisable( GL_FOG );
-	glDisable( GL_ALPHA_TEST );
-	glShadeModel( GL_FLAT );
-
-	/* Clear to black (node ID 0 = no hit) */
-	glClearColor( 0.0, 0.0, 0.0, 0.0 );
-	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-	/* Set up matrices and draw in pick mode */
-	setup_projection_matrix( TRUE );
-	setup_modelview_matrix( );
-	geometry_draw_for_pick( );
-
-	/* Read the pixel at (x, y) */
+	/* Get viewport dimensions */
 	glGetIntegerv( GL_VIEWPORT, viewport );
+
+	/* Set up the pick FBO (may invalidate if resized) */
+	pick_fbo_ensure( viewport[2], viewport[3] );
+
+	if (!pick_fbo_valid) {
+		/* Re-render the pick scene into the FBO */
+		glBindFramebuffer( GL_FRAMEBUFFER, pick_fbo );
+		glViewport( 0, 0, viewport[2], viewport[3] );
+
+		/* Set up for flat-color picking (no lighting/texturing) */
+		glDisable( GL_LIGHTING );
+		glDisable( GL_TEXTURE_2D );
+		glDisable( GL_BLEND );
+		glDisable( GL_DITHER );
+		glDisable( GL_FOG );
+		glDisable( GL_ALPHA_TEST );
+		glShadeModel( GL_FLAT );
+
+		/* Clear to black (node ID 0 = no hit) */
+		glClearColor( 0.0, 0.0, 0.0, 0.0 );
+		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+		/* Set up matrices and draw in pick mode */
+		setup_projection_matrix( TRUE );
+		setup_modelview_matrix( );
+		geometry_draw_for_pick( );
+
+		/* Restore GtkGLArea's FBO and GL state for normal rendering */
+		gtk_gl_area_attach_buffers( GTK_GL_AREA(viewport_gl_area_w) );
+		glViewport( viewport[0], viewport[1], viewport[2], viewport[3] );
+		glClearColor( 0.0, 0.0, 0.0, 0.0 );
+		glEnable( GL_LIGHTING );
+		glShadeModel( GL_FLAT );
+		glEnable( GL_DEPTH_TEST );
+		glEnable( GL_CULL_FACE );
+		glEnable( GL_POLYGON_OFFSET_FILL );
+
+		pick_fbo_valid = TRUE;
+	}
+
+	/* Read the pixel at (x, y) from the cached pick FBO */
+	glBindFramebuffer( GL_READ_FRAMEBUFFER, pick_fbo );
 	glReadPixels( x, viewport[3] - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel );
+	glBindFramebuffer( GL_READ_FRAMEBUFFER, 0 );
 
 	/* Decode node ID from RGB, face ID from alpha */
 	node_id = ((unsigned int)pixel[0] << 16) |
@@ -279,22 +336,16 @@ ogl_color_pick( int x, int y, unsigned int *face_id )
 	          (unsigned int)pixel[2];
 	*face_id = (unsigned int)pixel[3];
 
-	/* Restore GL state */
-	glClearColor( save_clear_color[0], save_clear_color[1],
-	              save_clear_color[2], save_clear_color[3] );
-	if (save_lighting) glEnable( GL_LIGHTING );
-	if (save_texture) glEnable( GL_TEXTURE_2D );
-	if (save_blend) glEnable( GL_BLEND );
-	if (save_dither) glEnable( GL_DITHER );
-	if (save_fog) glEnable( GL_FOG );
-	if (save_alpha_test) glEnable( GL_ALPHA_TEST );
-	glShadeModel( GL_FLAT );
-
-	/* Re-render the normal scene so the FBO isn't left with
-	 * pick colors (which would briefly flash on screen) */
-	ogl_draw( );
-
 	return node_id;
+}
+
+
+/* Marks the cached pick FBO as stale. Called when camera position,
+ * scene geometry, or viewport size changes. */
+void
+ogl_pick_invalidate( void )
+{
+	pick_fbo_valid = FALSE;
 }
 
 

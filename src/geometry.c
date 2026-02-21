@@ -2867,6 +2867,7 @@ queue_uncached_draw( void )
 {
 	fstree_low_draw_stage = 0;
 	fstree_high_draw_stage = 0;
+	ogl_pick_invalidate( );
 }
 
 

@@ -32,6 +32,7 @@
 #include "filelist.h"
 #include "geometry.h"
 #include "gui.h"
+#include "ogl.h" /* ogl_pick_invalidate( ) */
 #include "window.h"
 
 
@@ -1427,6 +1428,7 @@ camera_dolly( double dk )
 	 * motion events, so hard updates here cause stutter as each
 	 * wheel notch forces a synchronous scrollbar widget redraw */
 	camera_update_scrollbars( FALSE );
+	ogl_pick_invalidate( );
 	redraw( );
 }
 
@@ -1459,6 +1461,7 @@ camera_revolve( double dtheta, double dphi )
 	camera->manual_control = TRUE;
 
 	camera_update_scrollbars( TRUE );
+	ogl_pick_invalidate( );
 	redraw( );
 }
 

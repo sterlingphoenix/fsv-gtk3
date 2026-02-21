@@ -419,6 +419,10 @@ animation_loop( G_GNUC_UNUSED gpointer user_data )
 	/* Update morphing variables */
 	state_changed = morph_iteration( );
 
+	/* Camera/scene may have changed during morph -- invalidate pick cache */
+	if (state_changed)
+		ogl_pick_invalidate( );
+
 	if (globals.need_redraw) {
 		/* Tell GtkGLArea to redraw (actual rendering happens
 		 * in render_cb, where the FBO is properly bound) */

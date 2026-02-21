@@ -57,6 +57,10 @@ static boolean btn1_pressed = FALSE;
 static boolean btn1_is_dragging = FALSE;
 static int btn1_press_x = 0, btn1_press_y = 0;
 
+/* Pick throttle: minimum interval between color picks (seconds) */
+#define PICK_MIN_INTERVAL (1.0 / 60.0)
+static double last_pick_time = 0.0;
+
 
 /* Receives a newly created node table from scanfs( ) */
 void
@@ -222,18 +226,22 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 				}
 			}
 			else {
-				/* No button: hover highlight */
-				indicated_node = node_at_location( x, y, &face_id );
-				if (indicated_node == NULL) {
-					geometry_highlight_node( NULL, FALSE );
-					window_statusbar( SB_RIGHT, "" );
-				}
-				else {
-					if (geometry_should_highlight( indicated_node, face_id ))
-						geometry_highlight_node( indicated_node, FALSE );
-					else
+				/* No button: hover highlight (throttled) */
+				double t_now = xgettime( );
+				if (t_now - last_pick_time >= PICK_MIN_INTERVAL) {
+					last_pick_time = t_now;
+					indicated_node = node_at_location( x, y, &face_id );
+					if (indicated_node == NULL) {
 						geometry_highlight_node( NULL, FALSE );
-					window_statusbar( SB_RIGHT, node_absname( indicated_node ) );
+						window_statusbar( SB_RIGHT, "" );
+					}
+					else {
+						if (geometry_should_highlight( indicated_node, face_id ))
+							geometry_highlight_node( indicated_node, FALSE );
+						else
+							geometry_highlight_node( NULL, FALSE );
+						window_statusbar( SB_RIGHT, node_absname( indicated_node ) );
+					}
 				}
 			}
 			prev_x = x;
