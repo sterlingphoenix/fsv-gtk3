@@ -574,10 +574,19 @@ treev_get_scrollbar_states( AdjValues *x_adj, AdjValues *y_adj )
 }
 
 
-/* Applies AdjValues to a real GtkAdjustment */
+/* Applies AdjValues to a real GtkAdjustment.
+ * Guards against NaN/Inf which can arise from division by zero
+ * in scrollbar state calculations (e.g. target.r == 0 in TreeV) */
 static void
 adj_apply( GtkAdjustment *adj, const AdjValues *vals )
 {
+	if (!isfinite( vals->lower ) || !isfinite( vals->upper ) ||
+	    !isfinite( vals->value ) || !isfinite( vals->step_increment ) ||
+	    !isfinite( vals->page_increment ) || !isfinite( vals->page_size )) {
+		/* Fall back to safe defaults */
+		gtk_adjustment_configure( adj, 0.0, 0.0, 100.0, 0.0, 0.0, 100.0 );
+		return;
+	}
 	gtk_adjustment_configure( adj,
 		vals->value,
 		vals->lower,
