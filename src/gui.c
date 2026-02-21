@@ -545,7 +545,8 @@ gui_ctree_node_add( GtkWidget *tree_w, GtkTreeIter *parent, Icon icon_pair[2], c
 
 /* Changes the mouse cursor associated with the given widget.
  * A name of NULL indicates the default cursor.
- * Uses CSS cursor names: "wait", "move", "ns-resize", "not-allowed", etc. */
+ * Uses CSS cursor names: "wait", "move", "ns-resize", "not-allowed", etc.
+ * Falls back to X cursor font glyphs if the cursor theme lacks the name. */
 void
 gui_cursor( GtkWidget *widget, const char *name )
 {
@@ -562,8 +563,42 @@ gui_cursor( GtkWidget *widget, const char *name )
 		return; /* same cursor already set */
 
 	/* Create new cursor and make it active */
-	if (name != NULL)
-		cursor = gdk_cursor_new_from_name( gtk_widget_get_display( widget ), name );
+	if (name != NULL) {
+		GdkDisplay *display = gtk_widget_get_display( widget );
+		cursor = gdk_cursor_new_from_name( display, name );
+		if (cursor == NULL) {
+			/* Cursor theme lacks this name; try traditional
+			 * X cursor names, then X cursor font glyphs */
+			static const struct {
+				const char *css;
+				const char *fallbacks[3];
+				GdkCursorType type;
+			} map[] = {
+				{ "wait",        { "watch" },              GDK_WATCH },
+				{ "not-allowed", { "X_cursor", "pirate" }, GDK_PIRATE },
+				{ "ns-resize",   { "sb_v_double_arrow" },  GDK_SB_V_DOUBLE_ARROW },
+				{ "move",        { "fleur" },              GDK_FLEUR },
+			};
+			unsigned int m;
+			for (m = 0; m < G_N_ELEMENTS( map ); m++) {
+				if (strcmp( name, map[m].css ) != 0)
+					continue;
+				/* Try name-based fallbacks first */
+				for (int f = 0; f < 3 && map[m].fallbacks[f] != NULL; f++) {
+					cursor = gdk_cursor_new_from_name( display, map[m].fallbacks[f] );
+					if (cursor != NULL)
+						break;
+				}
+				/* Last resort: X cursor font glyph */
+				if (cursor == NULL) {
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+					cursor = gdk_cursor_new_for_display( display, map[m].type );
+G_GNUC_END_IGNORE_DEPRECATIONS
+				}
+				break;
+			}
+		}
+	}
 	else
 		cursor = NULL;
 	gdk_window_set_cursor( gtk_widget_get_window( widget ), cursor );
