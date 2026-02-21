@@ -184,7 +184,7 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 			btn1_pressed = FALSE;
 			btn1_is_dragging = FALSE;
 		}
-		gui_cursor( gl_area_w, -1 );
+		gui_cursor( gl_area_w, NULL );
 		break;
 
 		case GDK_MOTION_NOTIFY:
@@ -196,7 +196,7 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		if (!camera_moving( )) {
 			if (btn2) {
 				/* Dolly the camera */
-				gui_cursor( gl_area_w, GDK_DOUBLE_ARROW );
+				gui_cursor( gl_area_w, "ns-resize" );
 				dy = MOUSE_SENSITIVITY * (y - prev_y);
 				camera_dolly( - dy );
 				indicated_node = NULL;
@@ -215,7 +215,7 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 				}
 				if (btn1_is_dragging) {
 					/* Orbit the camera */
-					gui_cursor( gl_area_w, GDK_FLEUR );
+					gui_cursor( gl_area_w, "move" );
 					dx = MOUSE_SENSITIVITY * (x - prev_x);
 					dy = MOUSE_SENSITIVITY * (y - prev_y);
 					camera_revolve( dx, dy );
@@ -262,7 +262,7 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		/* The mouse has left the viewport */
 		geometry_highlight_node( NULL, FALSE );
 		window_statusbar( SB_RIGHT, "" );
-		gui_cursor( gl_area_w, -1 );
+		gui_cursor( gl_area_w, NULL );
 		indicated_node = NULL;
 		btn1_pressed = FALSE;
 		btn1_is_dragging = FALSE;

@@ -543,34 +543,27 @@ gui_ctree_node_add( GtkWidget *tree_w, GtkTreeIter *parent, Icon icon_pair[2], c
 }
 
 
-/* Changes the mouse cursor glyph associated with the given widget.
- * A glyph of -1 indicates the default cursor */
+/* Changes the mouse cursor associated with the given widget.
+ * A name of NULL indicates the default cursor.
+ * Uses CSS cursor names: "wait", "move", "ns-resize", "not-allowed", etc. */
 void
-gui_cursor( GtkWidget *widget, int glyph )
+gui_cursor( GtkWidget *widget, const char *name )
 {
 	GdkCursor *prev_cursor, *cursor;
-	int *prev_glyph;
+	const char *prev_name;
 
 	/* Get cursor information from widget */
 	prev_cursor = g_object_get_data( G_OBJECT(widget), "gui_cursor" );
-        prev_glyph = g_object_get_data( G_OBJECT(widget), "gui_glyph" );
+	prev_name = g_object_get_data( G_OBJECT(widget), "gui_cursor_name" );
 
-	if (prev_glyph == NULL) {
-		if (glyph < 0)
-			return; /* default cursor is already set */
-                /* First-time setup */
-		prev_glyph = NEW(int);
-		g_object_set_data_full( G_OBJECT(widget), "gui_glyph", prev_glyph, _xfree );
-	}
-	else {
-		/* Check if requested glyph is same as previous one */
-		if (glyph == *prev_glyph)
-			return;
-	}
+	if (prev_name == NULL && name == NULL)
+		return; /* default cursor is already set */
+	if (prev_name != NULL && name != NULL && strcmp( prev_name, name ) == 0)
+		return; /* same cursor already set */
 
 	/* Create new cursor and make it active */
-	if (glyph >= 0)
-		cursor = gdk_cursor_new_for_display( gtk_widget_get_display( widget ), (GdkCursorType)glyph );
+	if (name != NULL)
+		cursor = gdk_cursor_new_from_name( gtk_widget_get_display( widget ), name );
 	else
 		cursor = NULL;
 	gdk_window_set_cursor( gtk_widget_get_window( widget ), cursor );
@@ -579,15 +572,16 @@ gui_cursor( GtkWidget *widget, int glyph )
 	if (prev_cursor != NULL)
 		g_object_unref( prev_cursor );
 
-	if (glyph >= 0) {
+	if (name != NULL) {
 		/* Save new cursor information */
 		g_object_set_data( G_OBJECT(widget), "gui_cursor", cursor );
-		*prev_glyph = glyph;
+		g_object_set_data_full( G_OBJECT(widget), "gui_cursor_name",
+			g_strdup( name ), g_free );
 	}
 	else {
 		/* Clean up after ourselves */
 		g_object_set_data( G_OBJECT(widget), "gui_cursor", NULL );
-		g_object_set_data( G_OBJECT(widget), "gui_glyph", NULL );
+		g_object_set_data( G_OBJECT(widget), "gui_cursor_name", NULL );
 	}
 }
 
@@ -1444,7 +1438,7 @@ static void
 window_unmodalize( G_GNUC_UNUSED GObject *unused, GtkWidget *parent_window_w )
 {
 	gtk_widget_set_sensitive( parent_window_w, TRUE );
-	gui_cursor( parent_window_w, -1 );
+	gui_cursor( parent_window_w, NULL );
 }
 
 
@@ -1455,7 +1449,7 @@ gui_window_modalize( GtkWidget *window_w, GtkWidget *parent_window_w )
 	gtk_window_set_transient_for( GTK_WINDOW(window_w), GTK_WINDOW(parent_window_w) );
 	gtk_window_set_modal( GTK_WINDOW(window_w), TRUE );
 	gtk_widget_set_sensitive( parent_window_w, FALSE );
-	gui_cursor( parent_window_w, GDK_X_CURSOR );
+	gui_cursor( parent_window_w, "not-allowed" );
 
 	/* Restore original state once the window is destroyed */
 	g_signal_connect( G_OBJECT(window_w), "destroy", G_CALLBACK(window_unmodalize), parent_window_w );

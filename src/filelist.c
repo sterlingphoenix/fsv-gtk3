@@ -100,11 +100,11 @@ filelist_reset_access( void )
 
 	/* Extra fluff for interface niceness */
 	if (enabled)
-		gui_cursor( file_tree_w, -1 );
+		gui_cursor( file_tree_w, NULL );
 	else {
 		GtkTreeSelection *sel = gtk_tree_view_get_selection( GTK_TREE_VIEW(file_tree_w) );
 		gtk_tree_selection_unselect_all( sel );
-		gui_cursor( file_tree_w, GDK_X_CURSOR );
+		gui_cursor( file_tree_w, "not-allowed" );
 	}
 }
 

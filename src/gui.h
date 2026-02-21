@@ -64,7 +64,7 @@ GtkWidget *gui_colorpicker_add( GtkWidget *parent_w, RGBcolor *init_color, const
 void gui_colorpicker_set_color( GtkWidget *colorpicker_w, RGBcolor *color );
 GtkWidget *gui_ctree_add( GtkWidget *parent_w );
 GtkTreeIter *gui_ctree_node_add( GtkWidget *tree_w, GtkTreeIter *parent, Icon icon_pair[2], const char *text, boolean expanded, void *data );
-void gui_cursor( GtkWidget *widget, int glyph );
+void gui_cursor( GtkWidget *widget, const char *name );
 GtkWidget *gui_dateedit_add( GtkWidget *parent_w, time_t the_time, GCallback callback, void *callback_data );
 time_t gui_dateedit_get_time( GtkWidget *dateedit_w );
 void gui_dateedit_set_time( GtkWidget *dateedit_w, time_t the_time );

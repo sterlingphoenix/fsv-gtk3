@@ -92,13 +92,13 @@ dialog_change_root( void )
 	/* On networked filesystems, the file selection window can be
 	 * sloooow in coming up (as each directory component in the default
 	 * location has to be stat( )'ed-- takes >10 sec on MIT AFS!) */
-	gui_cursor( main_window_w, GDK_WATCH );
+	gui_cursor( main_window_w, "wait" );
 	gui_update( );
 
 	filesel_window_w = gui_filesel_window( _("Change Root Directory"), dir, G_CALLBACK(change_root_cb), NULL );
 	xfree( dir );
 
-	gui_cursor( main_window_w, -1 );
+	gui_cursor( main_window_w, NULL );
 	gui_update( );
 
 	/* Make it a directory chooser */
@@ -1096,10 +1096,10 @@ dialog_node_properties( GNode *node )
 
 	/* Get the lowdown on the node. get_node_info( ) may cause some
 	 * disk activity, so change the cursor meanwhile (just in case) */
-	gui_cursor( main_window_w, GDK_WATCH );
+	gui_cursor( main_window_w, "wait" );
 	gui_update( );
 	node_info = get_node_info( node );
-	gui_cursor( main_window_w, GDK_X_CURSOR );
+	gui_cursor( main_window_w, "not-allowed" );
 
 	window_w = gui_dialog_window( _("Properties"), NULL );
 	gui_window_modalize( window_w, main_window_w );

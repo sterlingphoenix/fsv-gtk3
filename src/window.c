@@ -61,6 +61,9 @@ static GtkWidget *birdseye_view_tbutton_w;
  * window_set_access( ) */
 static GList *sw_widget_list = NULL;
 
+/* Main window widget (for busy cursor) */
+static GtkWidget *main_window_w_saved;
+
 /* Left and right statusbar widgets */
 static GtkWidget *left_statusbar_w;
 static GtkWidget *right_statusbar_w;
@@ -267,6 +270,9 @@ window_init( FsvMode fsv_mode )
 	gui_keybind( search_next_button_w, "^G" );
 	gui_keybind( main_window_w, NULL );
 
+	/* Save main window reference for busy cursor */
+	main_window_w_saved = main_window_w;
+
 	/* Send out the widgets to their respective modules */
 	dialog_pass_main_window_widget( main_window_w );
 	dirtree_pass_widget( dir_ctree_w );
@@ -293,6 +299,10 @@ window_set_access( boolean enabled )
 
 		llink = llink->next;
 	}
+
+	/* Show busy cursor when access is disabled */
+	if (main_window_w_saved != NULL)
+		gui_cursor( main_window_w_saved, enabled ? NULL : "wait" );
 }
 
 
