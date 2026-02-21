@@ -1,6 +1,6 @@
 ## FSV
 
-NOTE: this project **is** actively maintained! However, it is a stepping stone to a complete modernisation. 
+NOTE: this project is not actively maintained; it was a stepping stone to a complete modernisation. 
 
 This is the fork that updates from gtk1 to gtk2. This enables building on a modern Linux system (test case was Ubuntu 25.10).
 
