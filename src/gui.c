@@ -212,7 +212,8 @@ gui_button_add( GtkWidget *parent_w, const char *label, GCallback callback, void
 	button_w = gtk_button_new( );
 	if (label != NULL)
 		gui_label_add( button_w, label );
-	g_signal_connect( G_OBJECT(button_w), "clicked", G_CALLBACK(callback), callback_data );
+	if (callback != NULL)
+		g_signal_connect( G_OBJECT(button_w), "clicked", G_CALLBACK(callback), callback_data );
 	parent_child( parent_w, button_w );
 
 	return button_w;

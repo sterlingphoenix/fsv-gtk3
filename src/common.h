@@ -326,6 +326,7 @@ RGBcolor heat_color( double x );
 GList *g_list_replace( GList *list, gpointer old_data, gpointer new_data );
 int gnome_config_get_token( const char *path, const char **tokens );
 void gnome_config_set_token( const char *path, int new_value, const char **tokens );
+char *config_file_path( void );
 void quit( char *message );
 
 

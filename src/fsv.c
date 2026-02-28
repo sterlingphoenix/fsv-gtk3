@@ -39,7 +39,6 @@
 #include "filelist.h"
 #include "geometry.h"
 #include "gui.h" /* gui_update( ) */
-#include "nvstore.h"
 #include "ogl.h" /* ogl_gl_query( ) */
 #include "scanfs.h"
 #include "window.h"
@@ -484,11 +483,29 @@ fsv_load( const char *dir )
 void
 fsv_write_config( void )
 {
-	NVStore *fsvrc;
+	GKeyFile *kf;
+	gchar *path, *data, *dir;
 
-	fsvrc = nvs_open( CONFIG_FILE );
-	nvs_write_int_token( fsvrc, "/fsv/mode", globals.fsv_mode, tokens_fsv_mode );
-	nvs_close( fsvrc );
+	kf = g_key_file_new( );
+	path = config_file_path( );
+
+	/* Load existing file to preserve other groups */
+	g_key_file_load_from_file( kf, path, G_KEY_FILE_KEEP_COMMENTS, NULL );
+
+	/* Write visualization mode */
+	g_key_file_set_string( kf, "Settings", "mode", tokens_fsv_mode[globals.fsv_mode] );
+
+	/* Ensure config directory exists */
+	dir = g_path_get_dirname( path );
+	g_mkdir_with_parents( dir, 0755 );
+	g_free( dir );
+
+	/* Write to disk */
+	data = g_key_file_to_data( kf, NULL, NULL );
+	g_file_set_contents( path, data, -1, NULL );
+	g_free( data );
+	g_free( path );
+	g_key_file_free( kf );
 
 	color_write_config( );
 }
@@ -521,10 +538,23 @@ main( int argc, char **argv )
 
 	/* Read saved visualization mode from config (CLI options override) */
 	{
-		NVStore *fsvrc = nvs_open( CONFIG_FILE );
-		int mode = nvs_read_int_token_default( fsvrc, "/fsv/mode", tokens_fsv_mode, FSV_MAPV );
-		initial_fsv_mode = (FsvMode)mode;
-		nvs_close( fsvrc );
+		GKeyFile *kf = g_key_file_new( );
+		gchar *cfg_path = config_file_path( );
+		if (g_key_file_load_from_file( kf, cfg_path, G_KEY_FILE_NONE, NULL )) {
+			gchar *str = g_key_file_get_string( kf, "Settings", "mode", NULL );
+			if (str != NULL) {
+				int i;
+				for (i = 0; tokens_fsv_mode[i] != NULL; i++) {
+					if (!strcmp( str, tokens_fsv_mode[i] )) {
+						initial_fsv_mode = (FsvMode)i;
+						break;
+					}
+				}
+				g_free( str );
+			}
+		}
+		g_free( cfg_path );
+		g_key_file_free( kf );
 	}
 
 	/* Parse command-line options */

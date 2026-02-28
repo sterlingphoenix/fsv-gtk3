@@ -925,6 +925,20 @@ g_list_replace( GList *list, gpointer old_data, gpointer new_data )
 }
 
 
+/* Returns the absolute path to the configuration file.
+ * Expands the leading ~ in CONFIG_FILE. Caller must g_free() the result. */
+char *
+config_file_path( void )
+{
+	const char *path = CONFIG_FILE;
+
+	if (path[0] == '~' && path[1] == '/')
+		return g_build_filename( g_get_home_dir( ), &path[2], NULL );
+
+	return g_strdup( path );
+}
+
+
 /* The wrong way out */
 void
 quit( char *message )

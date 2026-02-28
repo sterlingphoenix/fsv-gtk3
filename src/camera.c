@@ -1338,6 +1338,7 @@ camera_birdseye_view( boolean going_up )
 		memcpy( pre_cam, camera, sizeof(union AnyCamera) );
 
 		/* Build bird's-eye view */
+		new_cam->theta = camera->theta;
 		new_cam->phi = 90.0;
 		switch (globals.fsv_mode) {
 			case FSV_DISCV:

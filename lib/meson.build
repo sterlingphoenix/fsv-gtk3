@@ -1,4 +1,4 @@
-lib_sources = files('getopt.c', 'getopt1.c', 'nvstore.c')
+lib_sources = files('getopt.c', 'getopt1.c')
 
 if not have_scandir
   lib_sources += files('scandir.c')

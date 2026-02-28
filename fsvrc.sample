@@ -1,223 +1,67 @@
 # fsv configuration file
-//fsv/mode = mapv
-# Colours. 
-/color/colormode = wpattern
-/color/nodetype/blockdevice = #4CA0FF
-/color/nodetype/chardevice = #00FFFF
-/color/nodetype/directory = #A0A0A0
-/color/nodetype/pipe = #00FF00
-/color/nodetype/regularfile = #FFFFA0
-/color/nodetype/socket = #FF8000
-/color/nodetype/symlink = #FFFFFF
-/color/nodetype/unknown = #FF0000
-# Timestamp-based colours
-/color/timestamp/newcolor = #FF0000
-/color/timestamp/oldcolor = #0000FF
-/color/timestamp/period = 604800
-/color/timestamp/spectrumtype = rainbow
-/color/timestamp/timestamptype = modify
-# Extension-based colours
-/color/wpattern/defaultcolor = #FFFFA0
+
+[Settings]
+mode=mapv
+
+[Color]
+mode=wildcard
+
+[NodeType]
+directory=#A0A0A0
+regularfile=#FFFFA0
+symlink=#FFFFFF
+pipe=#00FF00
+socket=#FF8000
+chardevice=#00FFFF
+blockdevice=#4CA0FF
+unknown=#FF0000
+
+[Timestamp]
+spectrumtype=rainbow
+timestamptype=modify
+period=604800
+oldcolor=#0000FF
+newcolor=#FF0000
+
+[Wildcard]
+default=#FFFFA0
+
 # Executables and Scripts (Green)
-/color/wpattern/group[0]/color = #00FF00
-/color/wpattern/group[0]/wp[0] = *.cmd
-/color/wpattern/group[1]/color = #00FF00
-/color/wpattern/group[1]/wp[0] = *.exe
-/color/wpattern/group[2]/color = #00FF00
-/color/wpattern/group[2]/wp[0] = *.com
-/color/wpattern/group[3]/color = #00FF00
-/color/wpattern/group[3]/wp[0] = *.btm
-/color/wpattern/group[4]/color = #00FF00
-/color/wpattern/group[4]/wp[0] = *.bat
-/color/wpattern/group[5]/color = #00FF00
-/color/wpattern/group[5]/wp[0] = *.sh
-/color/wpattern/group[6]/color = #00FF00
-/color/wpattern/group[6]/wp[0] = *.bash
-/color/wpattern/group[7]/color = #00FF00
-/color/wpattern/group[7]/wp[0] = *.zsh
-/color/wpattern/group[8]/color = #00FF00
-/color/wpattern/group[8]/wp[0] = *.fish
-/color/wpattern/group[9]/color = #00FF00
-/color/wpattern/group[9]/wp[0] = *.ps1
-/color/wpattern/group[10]/color = #00FF00
-/color/wpattern/group[10]/wp[0] = *.bin
-/color/wpattern/group[11]/color = #00FF00
-/color/wpattern/group[11]/wp[0] = *.app
-/color/wpattern/group[12]/color = #00FF00
-/color/wpattern/group[12]/wp[0] = *.msi
+[Wildcard:1]
+color=#00FF00
+patterns=*.cmd;*.exe;*.com;*.btm;*.bat;*.sh;*.bash;*.zsh;*.fish;*.ps1;*.bin;*.app;*.msi;
 
 # Archives and Compressed Files (Red)
-/color/wpattern/group[13]/color = #FF0000
-/color/wpattern/group[13]/wp[0] = *.tar
-/color/wpattern/group[14]/color = #FF0000
-/color/wpattern/group[14]/wp[0] = *.bz2
-/color/wpattern/group[15]/color = #FF0000
-/color/wpattern/group[15]/wp[0] = *.tgz
-/color/wpattern/group[16]/color = #FF0000
-/color/wpattern/group[16]/wp[0] = *.arj
-/color/wpattern/group[17]/color = #FF0000
-/color/wpattern/group[17]/wp[0] = *.taz
-/color/wpattern/group[18]/color = #FF0000
-/color/wpattern/group[18]/wp[0] = *.lzh
-/color/wpattern/group[19]/color = #FF0000
-/color/wpattern/group[19]/wp[0] = *.zip
-/color/wpattern/group[20]/color = #FF0000
-/color/wpattern/group[20]/wp[0] = *.z
-/color/wpattern/group[21]/color = #FF0000
-/color/wpattern/group[21]/wp[0] = *.Z
-/color/wpattern/group[22]/color = #FF0000
-/color/wpattern/group[22]/wp[0] = *.gz
-/color/wpattern/group[23]/color = #FF0000
-/color/wpattern/group[23]/wp[0] = *.7z
-/color/wpattern/group[24]/color = #FF0000
-/color/wpattern/group[24]/wp[0] = *.rar
-/color/wpattern/group[25]/color = #FF0000
-/color/wpattern/group[25]/wp[0] = *.xz
-/color/wpattern/group[26]/color = #FF0000
-/color/wpattern/group[26]/wp[0] = *.iso
-/color/wpattern/group[27]/color = #FF0000
-/color/wpattern/group[27]/wp[0] = *.lzma
-/color/wpattern/group[28]/color = #FF0000
-/color/wpattern/group[28]/wp[0] = *.pkg
-/color/wpattern/group[29]/color = #FF0000
-/color/wpattern/group[29]/wp[0] = *.deb
-/color/wpattern/group[30]/color = #FF0000
-/color/wpattern/group[30]/wp[0] = *.rpm
+[Wildcard:2]
+color=#FF0000
+patterns=*.tar;*.bz2;*.tgz;*.arj;*.taz;*.lzh;*.zip;*.z;*.Z;*.gz;*.7z;*.rar;*.xz;*.iso;*.lzma;*.pkg;*.deb;*.rpm;
 
 # Images (Magenta)
-/color/wpattern/group[31]/color = #FF00FF
-/color/wpattern/group[31]/wp[0] = *.jpg
-/color/wpattern/group[32]/color = #FF00FF
-/color/wpattern/group[32]/wp[0] = *.png
-/color/wpattern/group[33]/color = #FF00FF
-/color/wpattern/group[33]/wp[0] = *.gif
-/color/wpattern/group[34]/color = #FF00FF
-/color/wpattern/group[34]/wp[0] = *.bmp
-/color/wpattern/group[35]/color = #FF00FF
-/color/wpattern/group[35]/wp[0] = *.xpm
-/color/wpattern/group[36]/color = #FF00FF
-/color/wpattern/group[36]/wp[0] = *.tif
-/color/wpattern/group[37]/color = #FF00FF
-/color/wpattern/group[37]/wp[0] = *.jpeg
-/color/wpattern/group[38]/color = #FF00FF
-/color/wpattern/group[38]/wp[0] = *.tiff
-/color/wpattern/group[39]/color = #FF00FF
-/color/wpattern/group[39]/wp[0] = *.webp
-/color/wpattern/group[40]/color = #FF00FF
-/color/wpattern/group[40]/wp[0] = *.svg
-/color/wpattern/group[41]/color = #FF00FF
-/color/wpattern/group[41]/wp[0] = *.ico
-/color/wpattern/group[42]/color = #FF00FF
-/color/wpattern/group[42]/wp[0] = *.heic
-/color/wpattern/group[43]/color = #FF00FF
-/color/wpattern/group[43]/wp[0] = *.raw
+[Wildcard:3]
+color=#FF00FF
+patterns=*.jpg;*.png;*.gif;*.bmp;*.xpm;*.tif;*.jpeg;*.tiff;*.webp;*.svg;*.ico;*.heic;*.raw;
 
 # Backups, Logs, and Temp Files (Blue)
-/color/wpattern/group[44]/color = #0000FF
-/color/wpattern/group[44]/wp[0] = *~
-/color/wpattern/group[45]/color = #0000FF
-/color/wpattern/group[45]/wp[0] = *.old
-/color/wpattern/group[46]/color = #0000FF
-/color/wpattern/group[46]/wp[0] = *.bak
-/color/wpattern/group[47]/color = #0000FF
-/color/wpattern/group[47]/wp[0] = *.orig
-/color/wpattern/group[48]/color = #0000FF
-/color/wpattern/group[48]/wp[0] = *.tmp
-/color/wpattern/group[49]/color = #0000FF
-/color/wpattern/group[49]/wp[0] = *.temp
-/color/wpattern/group[50]/color = #0000FF
-/color/wpattern/group[50]/wp[0] = *.swp
-/color/wpattern/group[51]/color = #0000FF
-/color/wpattern/group[51]/wp[0] = *.swo
-/color/wpattern/group[52]/color = #0000FF
-/color/wpattern/group[52]/wp[0] = *.log
+[Wildcard:4]
+color=#0000FF
+patterns=*~;*.old;*.bak;*.orig;*.tmp;*.temp;*.swp;*.swo;*.log;
 
 # Text, Templates, and Configuration Files (Orange)
-/color/wpattern/group[53]/color = #FFA500
-/color/wpattern/group[53]/wp[0] = *.txt
-/color/wpattern/group[54]/color = #FFA500
-/color/wpattern/group[54]/wp[0] = *.md
-/color/wpattern/group[55]/color = #FFA500
-/color/wpattern/group[55]/wp[0] = *.csv
-/color/wpattern/group[56]/color = #FFA500
-/color/wpattern/group[56]/wp[0] = *.json
-/color/wpattern/group[57]/color = #FFA500
-/color/wpattern/group[57]/wp[0] = *.xml
-/color/wpattern/group[58]/color = #FFA500
-/color/wpattern/group[58]/wp[0] = *.yml
-/color/wpattern/group[59]/color = #FFA500
-/color/wpattern/group[59]/wp[0] = *.yaml
-/color/wpattern/group[60]/color = #FFA500
-/color/wpattern/group[60]/wp[0] = *.ini
-/color/wpattern/group[61]/color = #FFA500
-/color/wpattern/group[61]/wp[0] = *.cfg
-/color/wpattern/group[62]/color = #FFA500
-/color/wpattern/group[62]/wp[0] = *.conf
-/color/wpattern/group[63]/color = #FFA500
-/color/wpattern/group[63]/wp[0] = *.erb
-/color/wpattern/group[64]/color = #FFA500
-/color/wpattern/group[64]/wp[0] = *.epp
+[Wildcard:5]
+color=#FFA500
+patterns=*.txt;*.md;*.csv;*.json;*.xml;*.yml;*.yaml;*.ini;*.cfg;*.conf;*.erb;*.epp;
 
 # Audio Files (Cyan)
-/color/wpattern/group[65]/color = #00FFFF
-/color/wpattern/group[65]/wp[0] = *.mp3
-/color/wpattern/group[66]/color = #00FFFF
-/color/wpattern/group[66]/wp[0] = *.wav
-/color/wpattern/group[67]/color = #00FFFF
-/color/wpattern/group[67]/wp[0] = *.flac
-/color/wpattern/group[68]/color = #00FFFF
-/color/wpattern/group[68]/wp[0] = *.ogg
-/color/wpattern/group[69]/color = #00FFFF
-/color/wpattern/group[69]/wp[0] = *.m4a
-/color/wpattern/group[70]/color = #00FFFF
-/color/wpattern/group[70]/wp[0] = *.aac
-/color/wpattern/group[71]/color = #00FFFF
-/color/wpattern/group[71]/wp[0] = *.wma
+[Wildcard:6]
+color=#00FFFF
+patterns=*.mp3;*.wav;*.flac;*.ogg;*.m4a;*.aac;*.wma;
 
 # Video Files (Yellow)
-/color/wpattern/group[72]/color = #FFFF00
-/color/wpattern/group[72]/wp[0] = *.mp4
-/color/wpattern/group[73]/color = #FFFF00
-/color/wpattern/group[73]/wp[0] = *.mkv
-/color/wpattern/group[74]/color = #FFFF00
-/color/wpattern/group[74]/wp[0] = *.avi
-/color/wpattern/group[75]/color = #FFFF00
-/color/wpattern/group[75]/wp[0] = *.mov
-/color/wpattern/group[76]/color = #FFFF00
-/color/wpattern/group[76]/wp[0] = *.wmv
-/color/wpattern/group[77]/color = #FFFF00
-/color/wpattern/group[77]/wp[0] = *.flv
-/color/wpattern/group[78]/color = #FFFF00
-/color/wpattern/group[78]/wp[0] = *.webm
+[Wildcard:7]
+color=#FFFF00
+patterns=*.mp4;*.mkv;*.avi;*.mov;*.wmv;*.flv;*.webm;
 
 # Source Code (Purple)
-/color/wpattern/group[79]/color = #A020F0
-/color/wpattern/group[79]/wp[0] = *.pp
-/color/wpattern/group[80]/color = #A020F0
-/color/wpattern/group[80]/wp[0] = *.c
-/color/wpattern/group[81]/color = #A020F0
-/color/wpattern/group[81]/wp[0] = *.cpp
-/color/wpattern/group[82]/color = #A020F0
-/color/wpattern/group[82]/wp[0] = *.h
-/color/wpattern/group[83]/color = #A020F0
-/color/wpattern/group[83]/wp[0] = *.hpp
-/color/wpattern/group[84]/color = #A020F0
-/color/wpattern/group[84]/wp[0] = *.py
-/color/wpattern/group[85]/color = #A020F0
-/color/wpattern/group[85]/wp[0] = *.js
-/color/wpattern/group[86]/color = #A020F0
-/color/wpattern/group[86]/wp[0] = *.ts
-/color/wpattern/group[87]/color = #A020F0
-/color/wpattern/group[87]/wp[0] = *.html
-/color/wpattern/group[88]/color = #A020F0
-/color/wpattern/group[88]/wp[0] = *.css
-/color/wpattern/group[89]/color = #A020F0
-/color/wpattern/group[89]/wp[0] = *.java
-/color/wpattern/group[90]/color = #A020F0
-/color/wpattern/group[90]/wp[0] = *.go
-/color/wpattern/group[91]/color = #A020F0
-/color/wpattern/group[91]/wp[0] = *.rs
-/color/wpattern/group[92]/color = #A020F0
-/color/wpattern/group[92]/wp[0] = *.rb
-/color/wpattern/group[93]/color = #A020F0
-/color/wpattern/group[93]/wp[0] = *.php
+[Wildcard:8]
+color=#A020F0
+patterns=*.pp;*.c;*.cpp;*.h;*.hpp;*.py;*.js;*.ts;*.html;*.css;*.java;*.go;*.rs;*.rb;*.php;

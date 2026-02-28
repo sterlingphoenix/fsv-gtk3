@@ -27,7 +27,6 @@
 
 #include <fnmatch.h>
 #include <time.h>
-#include "nvstore.h"
 
 #include "animation.h" /* redraw( ) */
 #include "geometry.h"
@@ -64,16 +63,13 @@ static const char default_timestamp_old_color[] = "#0000FF";
 static const char default_timestamp_new_color[] = "#FF0000";
 static const char default_wpattern_default_color[] = "#FFFFA0";
 
-/* For configuration file: key and token strings */
-static const char key_color[] = "color";
-static const char key_color_mode[] = "colormode";
+/* GKeyFile group and key names */
 static const char *tokens_color_mode[] = {
-	"wpattern",
+	"wildcard",
 	"nodetype",
 	"time",
 	NULL
 };
-static const char key_nodetype[] = "nodetype";
 static const char *keys_nodetype_node_type[NUM_NODE_TYPES] = {
 	NULL,
 	"directory",
@@ -85,29 +81,18 @@ static const char *keys_nodetype_node_type[NUM_NODE_TYPES] = {
 	"blockdevice",
 	"unknown"
 };
-static const char key_timestamp[] = "timestamp";
-static const char key_timestamp_spectrum_type[] = "spectrumtype";
-static const char *tokens_timestamp_spectrum_type[] = {
+static const char *tokens_spectrum_type[] = {
 	"rainbow",
 	"heat",
 	"gradient",
 	NULL
 };
-static const char key_timestamp_timestamp_type[] = "timestamptype";
-static const char *tokens_timestamp_timestamp_type[] = {
+static const char *tokens_timestamp_type[] = {
 	"access",
 	"modify",
 	"attribchange",
 	NULL
 };
-static const char key_timestamp_period[] = "period";
-static const char key_timestamp_old_color[] = "oldcolor";
-static const char key_timestamp_new_color[] = "newcolor";
-static const char key_wpattern[] = "wpattern";
-static const char key_wpattern_group[] = "group";
-static const char key_wpattern_group_color[] = "color";
-static const char key_wpattern_group_wpattern[] = "wp";
-static const char key_wpattern_default_color[] = "defaultcolor";
 
 /* Color configuration */
 static struct ColorConfig color_config;
@@ -434,86 +419,121 @@ color_set_config( struct ColorConfig *new_ccfg, ColorMode mode )
 }
 
 
+/* Helper: look up a string in a token table, return its index or a default */
+static int
+token_index( const char *str, const char **tokens, int def )
+{
+	int i;
+
+	if (str == NULL)
+		return def;
+	for (i = 0; tokens[i] != NULL; i++) {
+		if (!strcmp( str, tokens[i] ))
+			return i;
+	}
+	return def;
+}
+
+
+/* Helper: read a string key with a fallback default */
+static gchar *
+kf_get_string( GKeyFile *kf, const char *group, const char *key,
+               const char *def )
+{
+	gchar *str = g_key_file_get_string( kf, group, key, NULL );
+
+	if (str == NULL && def != NULL)
+		return g_strdup( def );
+	return str;
+}
+
+
 /* Reads color configuration from file */
 static void
 color_read_config( void )
 {
 	struct WPatternGroup *wpgroup;
-	NVStore *fsvrc;
-	int i, x;
-	char *str;
+	GKeyFile *kf;
+	gchar *path;
+	gchar *str;
+	int i, n;
 
-	fsvrc = nvs_open( CONFIG_FILE );
-
-	nvs_change_path( fsvrc, key_color );
+	kf = g_key_file_new( );
+	path = config_file_path( );
+	g_key_file_load_from_file( kf, path, G_KEY_FILE_NONE, NULL );
+	g_free( path );
 
 	/* Color mode */
-	x = nvs_read_int_token_default( fsvrc, key_color_mode, tokens_color_mode, default_color_mode );
-	color_mode = (ColorMode)x;
+	str = g_key_file_get_string( kf, "Color", "mode", NULL );
+	color_mode = (ColorMode)token_index( str, tokens_color_mode, default_color_mode );
+	g_free( str );
 
 	/* ColorByNodeType configuration */
-	nvs_change_path( fsvrc, key_nodetype );
 	for (i = 1; i < NUM_NODE_TYPES; i++) {
-		str = nvs_read_string_default( fsvrc, keys_nodetype_node_type[i], default_nodetype_colors[i] );
-		color_config.by_nodetype.colors[i] = hex2rgb( str ); /* struct assign */
-		free( str ); /* !xfree */
+		str = kf_get_string( kf, "NodeType", keys_nodetype_node_type[i], default_nodetype_colors[i] );
+		color_config.by_nodetype.colors[i] = hex2rgb( str );
+		g_free( str );
 	}
-	nvs_change_path( fsvrc, ".." );
 
 	/* ColorByTime configuration */
-	nvs_change_path( fsvrc, key_timestamp );
-	x = nvs_read_int_token_default( fsvrc, key_timestamp_spectrum_type, tokens_timestamp_spectrum_type, default_timestamp_spectrum_type );
-	color_config.by_timestamp.spectrum_type = (SpectrumType)x;
-	x = nvs_read_int_token_default( fsvrc, key_timestamp_timestamp_type, tokens_timestamp_timestamp_type, default_timestamp_timestamp_type );
-	color_config.by_timestamp.timestamp_type = (TimeStampType)x;
-	x = nvs_read_int_default( fsvrc, key_timestamp_period, default_timestamp_period );
+	str = g_key_file_get_string( kf, "Timestamp", "spectrumtype", NULL );
+	color_config.by_timestamp.spectrum_type = (SpectrumType)token_index( str, tokens_spectrum_type, default_timestamp_spectrum_type );
+	g_free( str );
+	str = g_key_file_get_string( kf, "Timestamp", "timestamptype", NULL );
+	color_config.by_timestamp.timestamp_type = (TimeStampType)token_index( str, tokens_timestamp_type, default_timestamp_timestamp_type );
+	g_free( str );
+	n = g_key_file_get_integer( kf, "Timestamp", "period", NULL );
+	if (n <= 0)
+		n = default_timestamp_period;
 	color_config.by_timestamp.new_time = time( NULL );
-	color_config.by_timestamp.old_time = color_config.by_timestamp.new_time - (time_t)x;
-	str = nvs_read_string_default( fsvrc, key_timestamp_old_color, default_timestamp_old_color );
-	color_config.by_timestamp.old_color = hex2rgb( str ); /* struct assign */
-	free( str ); /* !xfree */
-	str = nvs_read_string_default( fsvrc, key_timestamp_new_color, default_timestamp_new_color );
-	color_config.by_timestamp.new_color = hex2rgb( str ); /* struct assign */
-	free( str ); /* !xfree */
-	nvs_change_path( fsvrc, ".." );
+	color_config.by_timestamp.old_time = color_config.by_timestamp.new_time - (time_t)n;
+	str = kf_get_string( kf, "Timestamp", "oldcolor", default_timestamp_old_color );
+	color_config.by_timestamp.old_color = hex2rgb( str );
+	g_free( str );
+	str = kf_get_string( kf, "Timestamp", "newcolor", default_timestamp_new_color );
+	color_config.by_timestamp.new_color = hex2rgb( str );
+	g_free( str );
 
 	/* ColorByWPattern configuration */
-	nvs_change_path( fsvrc, key_wpattern );
-	/* Wildcard pattern groups */
 	color_config.by_wpattern.wpgroup_list = NULL;
-	nvs_vector_begin( fsvrc );
-	while (nvs_path_present( fsvrc, key_wpattern_group )) {
-		nvs_change_path( fsvrc, key_wpattern_group );
+	/* Iterate [Wildcard:1], [Wildcard:2], ... */
+	for (n = 1; ; n++) {
+		gchar *group = g_strdup_printf( "Wildcard:%d", n );
+		gchar **patterns;
+		gsize pat_len;
+
+		if (!g_key_file_has_group( kf, group )) {
+			g_free( group );
+			break;
+		}
+
+		str = g_key_file_get_string( kf, group, "color", NULL );
+		if (str == NULL) {
+			g_free( group );
+			continue;
+		}
 
 		wpgroup = NEW(struct WPatternGroup);
-		str = nvs_read_string( fsvrc, key_wpattern_group_color );
 		wpgroup->color = hex2rgb( str );
-		free( str ); /* !xfree */
+		g_free( str );
 
-		/* Read in patterns */
 		wpgroup->wp_list = NULL;
-		nvs_vector_begin( fsvrc );
-		while (nvs_path_present( fsvrc, key_wpattern_group_wpattern )) {
-			str = nvs_read_string( fsvrc, key_wpattern_group_wpattern );
-			G_LIST_APPEND(wpgroup->wp_list, xstrdup( str ));
-			free( str ); /* !xfree */
+		patterns = g_key_file_get_string_list( kf, group, "patterns", &pat_len, NULL );
+		if (patterns != NULL) {
+			for (i = 0; i < (int)pat_len; i++)
+				G_LIST_APPEND(wpgroup->wp_list, xstrdup( patterns[i] ));
+			g_strfreev( patterns );
 		}
-		nvs_vector_end( fsvrc );
 
 		G_LIST_APPEND(color_config.by_wpattern.wpgroup_list, wpgroup);
-
-		nvs_change_path( fsvrc, ".." );
+		g_free( group );
 	}
-	nvs_vector_end( fsvrc );
 	/* Default color */
-	str = nvs_read_string_default( fsvrc, key_wpattern_default_color, default_wpattern_default_color );
-	color_config.by_wpattern.default_color = hex2rgb( str ); /* struct assign */
-	free( str ); /* !xfree */
-	nvs_change_path( fsvrc, ".." );
+	str = kf_get_string( kf, "Wildcard", "default", default_wpattern_default_color );
+	color_config.by_wpattern.default_color = hex2rgb( str );
+	g_free( str );
 
-	nvs_change_path( fsvrc, ".." );
-
-	nvs_close( fsvrc );
+	g_key_file_free( kf );
 }
 
 
@@ -522,63 +542,87 @@ void
 color_write_config( void )
 {
 	struct WPatternGroup *wpgroup;
-	NVStore *fsvrc;
+	GKeyFile *kf;
 	GList *wpgroup_llink, *wp_llink;
-	int i;
-	char *wpattern;
+	gchar *path, *data, *dir;
+	gchar **groups;
+	gsize n_groups;
+	int i, group_num;
+	unsigned int j;
 
-	fsvrc = nvs_open( CONFIG_FILE );
+	kf = g_key_file_new( );
+	path = config_file_path( );
 
-	/* Clean out existing color configuration information */
-	nvs_change_path( fsvrc, key_color );
-	nvs_delete_recursive( fsvrc, "." );
+	/* Load existing file to preserve [Settings] group */
+	g_key_file_load_from_file( kf, path, G_KEY_FILE_KEEP_COMMENTS, NULL );
+
+	/* Remove old color-related groups */
+	groups = g_key_file_get_groups( kf, &n_groups );
+	for (j = 0; j < n_groups; j++) {
+		if (!strcmp( groups[j], "Color" ) ||
+		    !strcmp( groups[j], "NodeType" ) ||
+		    !strcmp( groups[j], "Timestamp" ) ||
+		    !strcmp( groups[j], "Wildcard" ) ||
+		    !strncmp( groups[j], "Wildcard:", 9 ))
+			g_key_file_remove_group( kf, groups[j], NULL );
+	}
+	g_strfreev( groups );
 
 	/* Color mode */
-	nvs_write_int_token( fsvrc, key_color_mode, color_mode, tokens_color_mode );
+	g_key_file_set_string( kf, "Color", "mode", tokens_color_mode[color_mode] );
 
 	/* ColorByNodeType configuration */
-	nvs_change_path( fsvrc, key_nodetype );
 	for (i = 1; i < NUM_NODE_TYPES; i++)
-		nvs_write_string( fsvrc, keys_nodetype_node_type[i], rgb2hex( &color_config.by_nodetype.colors[i] ) );
-	nvs_change_path( fsvrc, ".." );
+		g_key_file_set_string( kf, "NodeType", keys_nodetype_node_type[i], rgb2hex( &color_config.by_nodetype.colors[i] ) );
 
 	/* ColorByTime configuration */
-	nvs_change_path( fsvrc, key_timestamp );
-	nvs_write_int_token( fsvrc, key_timestamp_spectrum_type, color_config.by_timestamp.spectrum_type, tokens_timestamp_spectrum_type );
-	nvs_write_int_token( fsvrc, key_timestamp_timestamp_type, color_config.by_timestamp.timestamp_type, tokens_timestamp_timestamp_type );
-	nvs_write_int( fsvrc, key_timestamp_period, (int)difftime( color_config.by_timestamp.new_time, color_config.by_timestamp.old_time ) );
-	nvs_write_string( fsvrc, key_timestamp_old_color, rgb2hex( &color_config.by_timestamp.old_color ) );
-	nvs_write_string( fsvrc, key_timestamp_new_color, rgb2hex( &color_config.by_timestamp.new_color ) );
-	nvs_change_path( fsvrc, ".." );
+	g_key_file_set_string( kf, "Timestamp", "spectrumtype", tokens_spectrum_type[color_config.by_timestamp.spectrum_type] );
+	g_key_file_set_string( kf, "Timestamp", "timestamptype", tokens_timestamp_type[color_config.by_timestamp.timestamp_type] );
+	g_key_file_set_integer( kf, "Timestamp", "period", (int)difftime( color_config.by_timestamp.new_time, color_config.by_timestamp.old_time ) );
+	g_key_file_set_string( kf, "Timestamp", "oldcolor", rgb2hex( &color_config.by_timestamp.old_color ) );
+	g_key_file_set_string( kf, "Timestamp", "newcolor", rgb2hex( &color_config.by_timestamp.new_color ) );
 
 	/* ColorByWPattern configuration */
-	nvs_change_path( fsvrc, key_wpattern );
-	nvs_vector_begin( fsvrc );
+	g_key_file_set_string( kf, "Wildcard", "default", rgb2hex( &color_config.by_wpattern.default_color ) );
+
+	group_num = 1;
 	wpgroup_llink = color_config.by_wpattern.wpgroup_list;
 	while (wpgroup_llink != NULL) {
+		gchar *group;
+		const gchar **pat_array;
+		int pat_count;
+
 		wpgroup = (struct WPatternGroup *)wpgroup_llink->data;
+		group = g_strdup_printf( "Wildcard:%d", group_num++ );
 
-		nvs_change_path( fsvrc, key_wpattern_group );
-		nvs_write_string( fsvrc, key_wpattern_group_color, rgb2hex( &wpgroup->color ) );
+		g_key_file_set_string( kf, group, "color", rgb2hex( &wpgroup->color ) );
 
-		nvs_vector_begin( fsvrc );
+		/* Build pattern array */
+		pat_count = g_list_length( wpgroup->wp_list );
+		pat_array = g_new( const gchar *, pat_count );
 		wp_llink = wpgroup->wp_list;
-		while (wp_llink != NULL) {
-			wpattern = (char *)wp_llink->data;
-			nvs_write_string( fsvrc, key_wpattern_group_wpattern, wpattern );
+		for (i = 0; i < pat_count; i++) {
+			pat_array[i] = (const char *)wp_llink->data;
 			wp_llink = wp_llink->next;
 		}
-		nvs_vector_end( fsvrc );
+		g_key_file_set_string_list( kf, group, "patterns", pat_array, pat_count );
+		g_free( (gpointer)pat_array );
 
-		nvs_change_path( fsvrc, ".." );
-
+		g_free( group );
 		wpgroup_llink = wpgroup_llink->next;
 	}
-	nvs_vector_end( fsvrc );
-	nvs_write_string( fsvrc, key_wpattern_default_color, rgb2hex( &color_config.by_wpattern.default_color ) );
-	nvs_change_path( fsvrc, ".." );
 
-	nvs_close( fsvrc );
+	/* Ensure config directory exists */
+	dir = g_path_get_dirname( path );
+	g_mkdir_with_parents( dir, 0755 );
+	g_free( dir );
+
+	/* Write to disk */
+	data = g_key_file_to_data( kf, NULL, NULL );
+	g_file_set_contents( path, data, -1, NULL );
+	g_free( data );
+	g_free( path );
+	g_key_file_free( kf );
 }
 
 
