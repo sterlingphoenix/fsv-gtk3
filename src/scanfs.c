@@ -123,6 +123,12 @@ de_select( const struct dirent *de )
 }
 
 
+/* Minimum interval between UI updates during scan (seconds) */
+#define SCAN_UI_UPDATE_INTERVAL 0.05
+
+/* Timestamp of last UI update during scan */
+static double scan_last_ui_update;
+
 static int
 process_dir( const char *dir, GNode *dnode )
 {
@@ -186,8 +192,14 @@ process_dir( const char *dir, GNode *dnode )
 
 		free( dir_entries[i] ); /* !xfree */
 
-		/* Keep the user interface responsive */
-		gui_update( );
+		/* Keep the user interface responsive (throttled) */
+		{
+			double now = xgettime( );
+			if (now - scan_last_ui_update >= SCAN_UI_UPDATE_INTERVAL) {
+				gui_update( );
+				scan_last_ui_update = now;
+			}
+		}
 	}
 
 	free( dir_entries ); /* !xfree */
@@ -367,6 +379,7 @@ scanfs( const char *dir )
 	/* GUI stuff */
 	filelist_scan_monitor_init( );
 	handler_id = g_timeout_add( SCAN_MONITOR_PERIOD, scan_monitor, NULL );
+	scan_last_ui_update = xgettime( );
 
 	/* Let the disk thrashing begin */
 	process_dir( root_dir, root_dnode );
