@@ -146,15 +146,15 @@ window_init( FsvMode fsv_mode )
 	menu_w = gui_menu_add( menu_bar_w, _("Colors") );
 	/* Color menu items */
 	gui_radio_menu_begin( 0 );
+	menu_item_w = gui_radio_menu_item_add( menu_w, _("By wildcards"), G_CALLBACK(on_color_by_wildcards_activate), NULL );
+	G_LIST_APPEND(sw_widget_list, menu_item_w);
+	color_by_wpattern_rmenu_item_w = menu_item_w;
 	menu_item_w = gui_radio_menu_item_add( menu_w, _("By node type"), G_CALLBACK(on_color_by_nodetype_activate), NULL );
 	G_LIST_APPEND(sw_widget_list, menu_item_w);
 	color_by_nodetype_rmenu_item_w = menu_item_w;
 	menu_item_w = gui_radio_menu_item_add( menu_w, _("By timestamp"), G_CALLBACK(on_color_by_timestamp_activate), NULL );
 	G_LIST_APPEND(sw_widget_list, menu_item_w);
 	color_by_timestamp_rmenu_item_w = menu_item_w;
-	menu_item_w = gui_radio_menu_item_add( menu_w, _("By wildcards"), G_CALLBACK(on_color_by_wildcards_activate), NULL );
-	G_LIST_APPEND(sw_widget_list, menu_item_w);
-	color_by_wpattern_rmenu_item_w = menu_item_w;
 	gui_separator_add( menu_w );
 	gui_menu_item_add( menu_w, _("Setup..."), G_CALLBACK(on_color_setup_activate), NULL );
 

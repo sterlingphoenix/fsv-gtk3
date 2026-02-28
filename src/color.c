@@ -68,9 +68,9 @@ static const char default_wpattern_default_color[] = "#FFFFA0";
 static const char key_color[] = "color";
 static const char key_color_mode[] = "colormode";
 static const char *tokens_color_mode[] = {
+	"wpattern",
 	"nodetype",
 	"time",
-	"wpattern",
 	NULL
 };
 static const char key_nodetype[] = "nodetype";

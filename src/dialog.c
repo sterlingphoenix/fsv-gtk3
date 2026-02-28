@@ -855,6 +855,84 @@ dialog_color_setup( void )
 	color_get_config( &csdialog.color_config );
 
 
+	/**** "By wildcards" page ****/
+
+	hbox_w = gui_hbox_add( NULL, 10 );
+	gui_notebook_page_add( csdialog.notebook_w, _("By wildcards"), hbox_w );
+
+	/* Create a scrolled window with a custom TreeView for the pattern list */
+	{
+		GtkWidget *scroll_w;
+		GtkListStore *wp_store;
+		GtkTreeView *wp_tree;
+		GtkCellRenderer *renderer;
+		GtkTreeViewColumn *column;
+		GtkTreeSelection *sel;
+
+		wp_store = gtk_list_store_new( WPCOL_NUM,
+			G_TYPE_STRING,		/* WPCOL_BG_COLOR */
+			G_TYPE_STRING,		/* WPCOL_PATTERN */
+			G_TYPE_INT,		/* WPCOL_ROW_TYPE */
+			G_TYPE_POINTER,		/* WPCOL_WPGROUP */
+			G_TYPE_POINTER );	/* WPCOL_WPATTERN */
+
+		wp_tree = GTK_TREE_VIEW(gtk_tree_view_new_with_model( GTK_TREE_MODEL(wp_store) ));
+		g_object_unref( wp_store );
+
+		/* Column 0: Color swatch */
+		renderer = gtk_cell_renderer_text_new( );
+		g_object_set( renderer, "width", 40, NULL );
+		column = gtk_tree_view_column_new_with_attributes(
+			clist_col_titles[0], renderer,
+			"cell-background", WPCOL_BG_COLOR,
+			NULL );
+		gtk_tree_view_append_column( wp_tree, column );
+
+		/* Column 1: Pattern text */
+		renderer = gtk_cell_renderer_text_new( );
+		column = gtk_tree_view_column_new_with_attributes(
+			clist_col_titles[1], renderer,
+			"text", WPCOL_PATTERN,
+			NULL );
+		gtk_tree_view_column_set_expand( column, TRUE );
+		gtk_tree_view_append_column( wp_tree, column );
+
+		gtk_tree_view_set_headers_visible( wp_tree, TRUE );
+
+		/* Selection: single, with filter to block header rows */
+		sel = gtk_tree_view_get_selection( wp_tree );
+		gtk_tree_selection_set_mode( sel, GTK_SELECTION_SINGLE );
+		gtk_tree_selection_set_select_function( sel, csdialog_wpattern_selection_func, NULL, NULL );
+		g_signal_connect( G_OBJECT(sel), "changed", G_CALLBACK(csdialog_wpattern_clist_selection_changed_cb), NULL );
+
+		/* Click handler for color editing */
+		g_signal_connect( G_OBJECT(wp_tree), "button_release_event", G_CALLBACK(csdialog_wpattern_clist_click_cb), NULL );
+
+		/* Put inside a scrolled window */
+		scroll_w = gtk_scrolled_window_new( NULL, NULL );
+		gtk_scrolled_window_set_policy( GTK_SCROLLED_WINDOW(scroll_w), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC );
+		gtk_scrolled_window_set_shadow_type( GTK_SCROLLED_WINDOW(scroll_w), GTK_SHADOW_IN );
+		gtk_container_add( GTK_CONTAINER(scroll_w), GTK_WIDGET(wp_tree) );
+		gtk_widget_show( GTK_WIDGET(wp_tree) );
+		gtk_widget_show( scroll_w );
+		gtk_box_pack_start( GTK_BOX(hbox_w), scroll_w, TRUE, TRUE, 0 );
+
+		csdialog.wpattern.clist_w = GTK_WIDGET(wp_tree);
+	}
+
+	/* Action buttons */
+	vbox_w = gui_vbox_add( hbox_w, 0 );
+	csdialog.wpattern.new_color_button_w = gui_button_add( vbox_w, _("New color"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
+	gui_separator_add( vbox_w );
+	csdialog.wpattern.edit_pattern_button_w = gui_button_add( vbox_w, _("Edit pattern"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
+	gtk_widget_set_sensitive( csdialog.wpattern.edit_pattern_button_w, FALSE );
+	gui_separator_add( vbox_w );
+	csdialog.wpattern.delete_button_w = gui_button_add( vbox_w, _("Delete"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
+	gtk_widget_set_sensitive( csdialog.wpattern.delete_button_w, FALSE );
+
+	csdialog_wpattern_clist_populate( );
+
+
 	/**** "By node type" page ****/
 
 	hbox_w = gui_hbox_add( NULL, 7 );
@@ -957,84 +1035,6 @@ dialog_color_setup( void )
 
 	/* Color pickers are accessible only for gradient spectrum */
 	csdialog_time_color_picker_set_access( csdialog.color_config.by_timestamp.spectrum_type == SPECTRUM_GRADIENT );
-
-
-	/**** "By wildcards" page ****/
-
-	hbox_w = gui_hbox_add( NULL, 10 );
-	gui_notebook_page_add( csdialog.notebook_w, _("By wildcards"), hbox_w );
-
-	/* Create a scrolled window with a custom TreeView for the pattern list */
-	{
-		GtkWidget *scroll_w;
-		GtkListStore *wp_store;
-		GtkTreeView *wp_tree;
-		GtkCellRenderer *renderer;
-		GtkTreeViewColumn *column;
-		GtkTreeSelection *sel;
-
-		wp_store = gtk_list_store_new( WPCOL_NUM,
-			G_TYPE_STRING,		/* WPCOL_BG_COLOR */
-			G_TYPE_STRING,		/* WPCOL_PATTERN */
-			G_TYPE_INT,		/* WPCOL_ROW_TYPE */
-			G_TYPE_POINTER,		/* WPCOL_WPGROUP */
-			G_TYPE_POINTER );	/* WPCOL_WPATTERN */
-
-		wp_tree = GTK_TREE_VIEW(gtk_tree_view_new_with_model( GTK_TREE_MODEL(wp_store) ));
-		g_object_unref( wp_store );
-
-		/* Column 0: Color swatch */
-		renderer = gtk_cell_renderer_text_new( );
-		g_object_set( renderer, "width", 40, NULL );
-		column = gtk_tree_view_column_new_with_attributes(
-			clist_col_titles[0], renderer,
-			"cell-background", WPCOL_BG_COLOR,
-			NULL );
-		gtk_tree_view_append_column( wp_tree, column );
-
-		/* Column 1: Pattern text */
-		renderer = gtk_cell_renderer_text_new( );
-		column = gtk_tree_view_column_new_with_attributes(
-			clist_col_titles[1], renderer,
-			"text", WPCOL_PATTERN,
-			NULL );
-		gtk_tree_view_column_set_expand( column, TRUE );
-		gtk_tree_view_append_column( wp_tree, column );
-
-		gtk_tree_view_set_headers_visible( wp_tree, TRUE );
-
-		/* Selection: single, with filter to block header rows */
-		sel = gtk_tree_view_get_selection( wp_tree );
-		gtk_tree_selection_set_mode( sel, GTK_SELECTION_SINGLE );
-		gtk_tree_selection_set_select_function( sel, csdialog_wpattern_selection_func, NULL, NULL );
-		g_signal_connect( G_OBJECT(sel), "changed", G_CALLBACK(csdialog_wpattern_clist_selection_changed_cb), NULL );
-
-		/* Click handler for color editing */
-		g_signal_connect( G_OBJECT(wp_tree), "button_release_event", G_CALLBACK(csdialog_wpattern_clist_click_cb), NULL );
-
-		/* Put inside a scrolled window */
-		scroll_w = gtk_scrolled_window_new( NULL, NULL );
-		gtk_scrolled_window_set_policy( GTK_SCROLLED_WINDOW(scroll_w), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC );
-		gtk_scrolled_window_set_shadow_type( GTK_SCROLLED_WINDOW(scroll_w), GTK_SHADOW_IN );
-		gtk_container_add( GTK_CONTAINER(scroll_w), GTK_WIDGET(wp_tree) );
-		gtk_widget_show( GTK_WIDGET(wp_tree) );
-		gtk_widget_show( scroll_w );
-		gtk_box_pack_start( GTK_BOX(hbox_w), scroll_w, TRUE, TRUE, 0 );
-
-		csdialog.wpattern.clist_w = GTK_WIDGET(wp_tree);
-	}
-
-	/* Action buttons */
-	vbox_w = gui_vbox_add( hbox_w, 0 );
-	csdialog.wpattern.new_color_button_w = gui_button_add( vbox_w, _("New color"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
-	gui_separator_add( vbox_w );
-	csdialog.wpattern.edit_pattern_button_w = gui_button_add( vbox_w, _("Edit pattern"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
-	gtk_widget_set_sensitive( csdialog.wpattern.edit_pattern_button_w, FALSE );
-	gui_separator_add( vbox_w );
-	csdialog.wpattern.delete_button_w = gui_button_add( vbox_w, _("Delete"), G_CALLBACK(csdialog_wpattern_button_cb), NULL );
-	gtk_widget_set_sensitive( csdialog.wpattern.delete_button_w, FALSE );
-
-	csdialog_wpattern_clist_populate( );
 
 
 	/* Horizontal box for OK and Cancel buttons */

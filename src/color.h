@@ -30,9 +30,9 @@
 
 /* The various coloring modes */
 typedef enum {
+	COLOR_BY_WPATTERN,
 	COLOR_BY_NODETYPE,
 	COLOR_BY_TIMESTAMP,
-	COLOR_BY_WPATTERN,
         COLOR_NONE
 } ColorMode;
 
