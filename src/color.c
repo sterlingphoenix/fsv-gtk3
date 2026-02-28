@@ -448,7 +448,7 @@ color_read_config( void )
 	nvs_change_path( fsvrc, key_color );
 
 	/* Color mode */
-	x = nvs_read_int_token_default( fsvrc, "mode", tokens_color_mode, default_color_mode );
+	x = nvs_read_int_token_default( fsvrc, key_color_mode, tokens_color_mode, default_color_mode );
 	color_mode = (ColorMode)x;
 
 	/* ColorByNodeType configuration */
@@ -504,6 +504,7 @@ color_read_config( void )
 
 		nvs_change_path( fsvrc, ".." );
 	}
+	nvs_vector_end( fsvrc );
 	/* Default color */
 	str = nvs_read_string_default( fsvrc, key_wpattern_default_color, default_wpattern_default_color );
 	color_config.by_wpattern.default_color = hex2rgb( str ); /* struct assign */

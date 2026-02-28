@@ -429,7 +429,9 @@ nvs_path_present( NVStore *nvs, const char *path )
 }
 
 
-/* Internal: look up a value by path */
+/* Internal: look up a value by path.
+ * In vector context, if path matches the key_prefix, use an indexed
+ * path (path[counter]) and advance the counter. */
 static const char *
 nvs_lookup( NVStore *nvs, const char *path )
 {
@@ -439,6 +441,20 @@ nvs_lookup( NVStore *nvs, const char *path )
 	if (nvs == NULL)
 		return NULL;
 
+	if (nvs->vector_stack != NULL) {
+		VectorState *vs = (VectorState *)nvs->vector_stack->data;
+		if (vs->key_prefix == NULL)
+			vs->key_prefix = xstrdup( path );
+		if (strcmp( path, vs->key_prefix ) == 0) {
+			full_path = (char *)xmalloc( strlen( nvs->current_path ) + strlen( path ) + 16 );
+			sprintf( full_path, "%s/%s[%d]", nvs->current_path, path, vs->counter );
+			vs->counter++;
+			result = (const char *)g_hash_table_lookup( nvs->data, full_path );
+			xfree( full_path );
+			return result;
+		}
+	}
+
 	full_path = resolve_path( nvs, path );
 	result = (const char *)g_hash_table_lookup( nvs->data, full_path );
 	xfree( full_path );
@@ -447,7 +463,9 @@ nvs_lookup( NVStore *nvs, const char *path )
 }
 
 
-/* Internal: store a value by path */
+/* Internal: store a value by path.
+ * In vector context, if path matches the key_prefix, use an indexed
+ * path (path[counter]) and advance the counter. */
 static void
 nvs_store( NVStore *nvs, const char *path, const char *value )
 {
@@ -455,6 +473,20 @@ nvs_store( NVStore *nvs, const char *path, const char *value )
 
 	if (nvs == NULL)
 		return;
+
+	if (nvs->vector_stack != NULL) {
+		VectorState *vs = (VectorState *)nvs->vector_stack->data;
+		if (vs->key_prefix == NULL)
+			vs->key_prefix = xstrdup( path );
+		if (strcmp( path, vs->key_prefix ) == 0) {
+			full_path = (char *)xmalloc( strlen( nvs->current_path ) + strlen( path ) + 16 );
+			sprintf( full_path, "%s/%s[%d]", nvs->current_path, path, vs->counter );
+			vs->counter++;
+			g_hash_table_insert( nvs->data, full_path, xstrdup( value ) );
+			nvs->dirty = 1;
+			return;
+		}
+	}
 
 	full_path = resolve_path( nvs, path );
 	g_hash_table_insert( nvs->data, full_path, xstrdup( value ) );
