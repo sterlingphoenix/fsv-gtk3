@@ -28,7 +28,8 @@
 #include "fsv.h"
 
 #include <gtk/gtk.h>
-#include <unistd.h> /* symlink( ) */
+#include <sys/stat.h> /* struct stat */
+#include <unistd.h> /* symlink( ), access( ) */
 #include "getopt.h"
 
 #include "about.h"
@@ -586,6 +587,27 @@ main( int argc, char **argv )
 	else {
 		/* Use current directory */
 		root_dir = xstrdup( "." );
+	}
+
+	/* Validate root directory */
+	{
+		struct stat st;
+
+		if (stat( root_dir, &st ) != 0) {
+			fprintf( stderr, _("fsv: %s: %s\n"),
+				root_dir, strerror( errno ) );
+			exit( EXIT_FAILURE );
+		}
+		if (!S_ISDIR( st.st_mode )) {
+			fprintf( stderr, _("fsv: %s: Not a directory\n"),
+				root_dir );
+			exit( EXIT_FAILURE );
+		}
+		if (access( root_dir, R_OK | X_OK ) != 0) {
+			fprintf( stderr, _("fsv: %s: Permission denied\n"),
+				root_dir );
+			exit( EXIT_FAILURE );
+		}
 	}
 
 	/* Request a legacy (compatibility profile) GL context.

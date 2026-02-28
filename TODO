@@ -181,8 +181,8 @@ Step 4.3 - Update README.md and .gitignore
 Step 4.4 - Final verification
   [x] Clean build from scratch: meson setup builddir && ninja -C builddir
   [x] Binary runs and shows version 2.31
-  [ ] Test all three visualization modes (DiscV, MapV, TreeV)
-  [ ] Test on Wayland and X11 sessions
+  [X] Test all three visualization modes (DiscV, MapV, TreeV)
+  [X] Test on Wayland and X11 sessions
 
 
 NOTES
