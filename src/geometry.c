@@ -84,6 +84,10 @@ static int frustum_viewport_h; /* viewport height in pixels */
 /* Minimum projected screen size in pixels before culling a subtree */
 #define CULL_SIZE_THRESHOLD 2.0
 
+/* Minimum projected screen size in pixels for labels to be drawn.
+ * Below this threshold, labels are too small to read. */
+#define LABEL_SIZE_THRESHOLD 6.0
+
 /* Extracts frustum planes from the current GL matrices.
  * Call once per frame before any recursive draw. */
 static void
@@ -602,7 +606,9 @@ discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, doub
 			glCallList( dir_ndesc->a_dlist );
 	}
 
-	if (visible && action == DISCV_DRAW_LABELS) {
+	if (visible && action == DISCV_DRAW_LABELS &&
+	    !(world_radius > 0.0 &&
+	      screen_size_pixels( world_x, world_y, 0.0, world_radius ) < LABEL_SIZE_THRESHOLD)) {
 		/* Draw name label(s) (display list B) */
 		if (dir_ndesc->b_dlist_stale) {
 			/* Rebuild */
@@ -1305,30 +1311,38 @@ mapv_draw_recursive( GNode *dnode, int action, double acc_z )
 	}
 
 	if (action == MAPV_DRAW_LABELS) {
-		/* Draw name label(s) (display list B) */
-		if (dir_ndesc->b_dlist_stale) {
-			/* Rebuild */
-			if (dir_ndesc->b_dlist == NULL_DLIST)
-				dir_ndesc->b_dlist = glGenLists( 1 );
-			glNewList( dir_ndesc->b_dlist, GL_COMPILE_AND_EXECUTE );
-			if (dir_collapsed) {
-				/* Label directory */
-				mapv_apply_label( dnode );
-			}
-			else {
-				/* Label non-subdirectory children */
-				node = dnode->children;
-				while (node != NULL) {
-					if (!NODE_IS_DIR(node))
-						mapv_apply_label( node );
-					node = node->next;
+		/* Label distance culling: skip if too small to read */
+		double lhs = 0.5 * MAX(gparams->c1.x - gparams->c0.x,
+		                       gparams->c1.y - gparams->c0.y);
+		if (lhs <= 0.0 ||
+		    screen_size_pixels( 0.5 * (gparams->c0.x + gparams->c1.x),
+		                        0.5 * (gparams->c0.y + gparams->c1.y),
+		                        node_z, lhs ) >= LABEL_SIZE_THRESHOLD) {
+			/* Draw name label(s) (display list B) */
+			if (dir_ndesc->b_dlist_stale) {
+				/* Rebuild */
+				if (dir_ndesc->b_dlist == NULL_DLIST)
+					dir_ndesc->b_dlist = glGenLists( 1 );
+				glNewList( dir_ndesc->b_dlist, GL_COMPILE_AND_EXECUTE );
+				if (dir_collapsed) {
+					/* Label directory */
+					mapv_apply_label( dnode );
 				}
+				else {
+					/* Label non-subdirectory children */
+					node = dnode->children;
+					while (node != NULL) {
+						if (!NODE_IS_DIR(node))
+							mapv_apply_label( node );
+						node = node->next;
+					}
+				}
+				glEndList( );
+				dir_ndesc->b_dlist_stale = FALSE;
 			}
-			glEndList( );
-			dir_ndesc->b_dlist_stale = FALSE;
+			else
+				glCallList( dir_ndesc->b_dlist );
 		}
-		else
-			glCallList( dir_ndesc->b_dlist );
 	}
 
 	/* Update geometry status */
@@ -2734,35 +2748,53 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 	}
 
 	if (action == TREEV_DRAW_LABELS) {
-		/* Draw name label(s) (display list C) */
-		if (dir_ndesc->c_dlist_stale) {
-			/* Rebuild */
-			if (dir_ndesc->c_dlist == NULL_DLIST)
-				dir_ndesc->c_dlist = glGenLists( 1 );
-			glNewList( dir_ndesc->c_dlist, GL_COMPILE_AND_EXECUTE );
-			if (dir_collapsed) {
-				/* Label directory leaf */
-				glColor3fv( (float *)&treev_leaf_label_color );
-				treev_apply_label( dnode, prev_r0, TRUE );
-			}
-			else if (NODE_IS_DIR(dnode)) {
-				/* Label directory platform */
-				glColor3fv( (float *)&treev_platform_label_color );
-				treev_apply_label( dnode, r0, FALSE );
-				/* Label leaf nodes that aren't directories */
-				glColor3fv( (float *)&treev_leaf_label_color );
-				node = dnode->children;
-				while (node != NULL) {
-					if (!NODE_IS_DIR(node))
-						treev_apply_label( node, r0, TRUE );
-					node = node->next;
-				}
-			}
-			glEndList( );
-			dir_ndesc->c_dlist_stale = FALSE;
+		/* Label distance culling */
+		boolean label_vis = TRUE;
+		if (NODE_IS_DIR(dnode) && !dir_collapsed && dir_gparams->platform.depth > 0.0) {
+			double pr = r0 + dir_gparams->platform.depth * 0.5;
+			double pt = acc_theta + dir_gparams->platform.theta;
+			if (screen_size_pixels( pr * cos( RAD(pt) ), pr * sin( RAD(pt) ),
+			    0.0, dir_gparams->platform.depth * 0.5 ) < LABEL_SIZE_THRESHOLD)
+				label_vis = FALSE;
 		}
-		else
-			glCallList( dir_ndesc->c_dlist );
+		else if (dir_collapsed) {
+			double lr = prev_r0 + dir_gparams->leaf.distance;
+			double lt = acc_theta + dir_gparams->leaf.theta;
+			if (screen_size_pixels( lr * cos( RAD(lt) ), lr * sin( RAD(lt) ),
+			    0.0, TREEV_LEAF_NODE_EDGE * 0.5 ) < LABEL_SIZE_THRESHOLD)
+				label_vis = FALSE;
+		}
+		if (label_vis) {
+			/* Draw name label(s) (display list C) */
+			if (dir_ndesc->c_dlist_stale) {
+				/* Rebuild */
+				if (dir_ndesc->c_dlist == NULL_DLIST)
+					dir_ndesc->c_dlist = glGenLists( 1 );
+				glNewList( dir_ndesc->c_dlist, GL_COMPILE_AND_EXECUTE );
+				if (dir_collapsed) {
+					/* Label directory leaf */
+					glColor3fv( (float *)&treev_leaf_label_color );
+					treev_apply_label( dnode, prev_r0, TRUE );
+				}
+				else if (NODE_IS_DIR(dnode)) {
+					/* Label directory platform */
+					glColor3fv( (float *)&treev_platform_label_color );
+					treev_apply_label( dnode, r0, FALSE );
+					/* Label leaf nodes that aren't directories */
+					glColor3fv( (float *)&treev_leaf_label_color );
+					node = dnode->children;
+					while (node != NULL) {
+						if (!NODE_IS_DIR(node))
+							treev_apply_label( node, r0, TRUE );
+						node = node->next;
+					}
+				}
+				glEndList( );
+				dir_ndesc->c_dlist_stale = FALSE;
+			}
+			else
+				glCallList( dir_ndesc->c_dlist );
+		}
 	}
 
 	/* Update geometry status */

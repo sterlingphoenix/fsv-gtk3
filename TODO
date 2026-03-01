@@ -227,9 +227,9 @@ Step 5.1 - Frustum and screen-space size culling
   faster and visually correct.
 
 Step 5.2 - Label distance culling
-  [ ] During label drawing passes, estimate the projected screen height
+  [x] During label drawing passes, estimate the projected screen height
       of each label from camera distance and world-space size
-  [ ] Skip labels whose projected height is below a legibility threshold
+  [x] Skip labels whose projected height is below a legibility threshold
       (e.g., 6 pixels)
   [ ] Verify: labels appear/disappear smoothly as the camera zooms in/out;
       no visual artifacts
