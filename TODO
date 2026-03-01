@@ -1,6 +1,13 @@
 FSV GTK3 Migration Plan
 ========================
 
+**Initial version:** 2.0.0
+**Versioning scheme:** 2.{phase}.{item} (e.g., Phase 2, Item 3 = 2.2.03)
+
+> After each phase is complete, the user should build, run, and test the
+> application before proceeding to the next phase.
+
+
 Goal: Migrate from GTK+ 2.0 to GTK 3, with pragmatic middle-of-the-road
 library choices. Each step should leave the code compilable and runnable.
 
@@ -185,6 +192,94 @@ Step 4.4 - Final verification
   [X] Test on Wayland and X11 sessions
 
 
+PHASE 5: RENDERING PERFORMANCE OPTIMIZATIONS
+=============================================
+
+The existing rendering pipeline has no spatial awareness: every expanded
+node is drawn regardless of whether it is visible on screen or large enough
+to see. On large trees like /usr with many directories expanded, this means
+tens of thousands of nodes are submitted to OpenGL every frame, making
+interaction sluggish.
+
+Per-directory display lists remain cached (geometry built once, replayed
+via glCallList). The tree-level display list cache (which bakes all
+per-directory calls into a single list) is replaced by a per-frame culled
+tree walk, since the culled walk skips most directories and is faster than
+replaying a massive uncached list.
+
+Step 5.1 - Frustum and screen-space size culling
+  [x] Extract view frustum planes from the projection-modelview matrix
+      at the start of each frame
+  [x] Compute world-space bounding volumes per directory subtree for
+      each visualization mode (DiscV, MapV, TreeV)
+  [x] In each mode's recursive draw function, test the directory's
+      bounding volume against the frustum; skip the entire subtree if
+      fully outside
+  [x] Skip subtrees whose projected screen size falls below a threshold
+      (e.g., 2 pixels) -- natural LOD without geometry simplification
+  [x] Replace tree-level display list (3-stage system) with per-frame
+      culled tree walk that calls per-directory display lists directly
+  [ ] Verify: all three modes render correctly, camera interaction is
+      smooth on large expanded trees
+
+  Checkpoint: User tests with ./builddir/fsv /usr, fully expands several
+  directories, orbits camera, and confirms rendering is significantly
+  faster and visually correct.
+
+Step 5.2 - Label distance culling
+  [ ] During label drawing passes, estimate the projected screen height
+      of each label from camera distance and world-space size
+  [ ] Skip labels whose projected height is below a legibility threshold
+      (e.g., 6 pixels)
+  [ ] Verify: labels appear/disappear smoothly as the camera zooms in/out;
+      no visual artifacts
+
+  Checkpoint: User tests by zooming in and out on a large expanded tree
+  and confirms labels appear when readable, disappear when too small,
+  and rendering is faster when zoomed out.
+
+Step 5.3 - Reduce tree walks during collapse/expand animation
+  [ ] During colexp animation, only rebuild per-directory display lists
+      for the directory whose geometry actually changed (geom_expanded
+      transition), not every frame
+  [ ] On animation frames where no per-directory lists are stale, skip
+      the Stage 0 "rebuild stale" pass and go directly to the culled
+      tree walk
+  [ ] Verify: expand/collapse animations are visually correct and
+      noticeably smoother on large trees
+
+  Checkpoint: User tests by expanding and collapsing directories on a
+  large tree and confirms animations are smooth and visually correct.
+
+Step 5.4 - Optimize wireframe outline pass
+  [ ] In TreeV and MapV high-detail rendering, the entire geometry is
+      redrawn in wireframe mode for black edge outlines (a full extra
+      tree walk). Replace with a more efficient technique:
+      - Use glPolygonOffset to render filled geometry slightly offset,
+        then render outlines only for nearby/visible nodes, OR
+      - Apply outline culling: skip wireframe pass for subtrees below
+        a projected size threshold
+  [ ] Verify: edge outlines still appear on nearby nodes; visual quality
+      is acceptable; frame rate improves on large trees
+
+  Checkpoint: User tests in MapV and TreeV with many expanded directories
+  and confirms outlines look acceptable and performance is improved.
+
+Step 5.5 - Pick rendering optimization
+  [ ] Apply the same frustum/size culling to pick rendering
+      (geometry_draw_for_pick) so that only visible, large-enough nodes
+      are drawn into the pick FBO
+  [ ] Consider keeping pick FBO valid during camera pans where the scene
+      has not changed (only the viewpoint), and re-rendering pick only
+      when geometry or expansion state changes
+  [ ] Verify: node selection via click and hover still works correctly
+      for all visible nodes; no misidentification
+
+  Checkpoint: User tests by hovering and clicking on nodes in a large
+  expanded tree and confirms correct node identification and improved
+  responsiveness.
+
+
 NOTES
 =====
 - Each step should leave the code compilable and runnable
@@ -195,6 +290,5 @@ NOTES
 - geometry.c uses ~267 legacy GL calls (glBegin/glEnd, display lists, etc.)
   These work fine under GL compatibility profile and are NOT changed in this
   migration. A future project can move to modern GL core profile.
-- The nvstore.c library is self-contained and needs no changes.
 - The lib/getopt.c, lib/getopt1.c, lib/scandir.c, lib/fileblocks.c are
   POSIX polyfills and need no changes.
