@@ -259,19 +259,22 @@ Step 5.4 - Optimize wireframe outline pass
         then render outlines only for nearby/visible nodes, OR
       - Apply outline culling: skip wireframe pass for subtrees below
         a projected size threshold
-  [ ] Verify: edge outlines still appear on nearby nodes; visual quality
+  [x] Verify: edge outlines still appear on nearby nodes; visual quality
       is acceptable; frame rate improves on large trees
 
   Checkpoint: User tests in MapV and TreeV with many expanded directories
   and confirms outlines look acceptable and performance is improved.
 
 Step 5.5 - Pick rendering optimization
-  [ ] Apply the same frustum/size culling to pick rendering
+  [x] Apply the same frustum/size culling to pick rendering
       (geometry_draw_for_pick) so that only visible, large-enough nodes
       are drawn into the pick FBO
-  [ ] Consider keeping pick FBO valid during camera pans where the scene
+  [x] Consider keeping pick FBO valid during camera pans where the scene
       has not changed (only the viewpoint), and re-rendering pick only
       when geometry or expansion state changes
+      (Pick FBO already uses lazy invalidation — re-rendered only when
+      ogl_color_pick() is called. Camera pans change the projection so
+      the FBO must be re-rendered. Current approach is already optimal.)
   [ ] Verify: node selection via click and hover still works correctly
       for all visible nodes; no misidentification
 

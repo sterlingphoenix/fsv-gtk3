@@ -578,13 +578,13 @@ discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, doub
 	world_radius = world_scale * dir_gparams->radius;
 
 	/* Size culling: skip entire subtree if projected size is tiny */
-	if (!picking_mode && world_radius > 0.0 &&
+	if (world_radius > 0.0 &&
 	    screen_size_pixels( world_x, world_y, 0.0, world_radius ) < CULL_SIZE_THRESHOLD)
 		return;
 
 	/* Frustum culling: test if this node's disc is on-screen
 	 * (don't skip subtree -- children may extend beyond parent disc) */
-	visible = picking_mode || world_radius <= 0.0 ||
+	visible = world_radius <= 0.0 ||
 	          frustum_test_sphere( world_x, world_y, 0.0, world_radius );
 
 	glPushMatrix( );
@@ -1265,7 +1265,7 @@ mapv_draw_recursive( GNode *dnode, int action, double acc_z )
 
 	/* Frustum + size culling (children are within parent's XY footprint,
 	 * so culling the parent culls the entire subtree) */
-	if (!picking_mode && NODE_IS_DIR(dnode)) {
+	if (NODE_IS_DIR(dnode)) {
 		double half_w = 0.5 * (gparams->c1.x - gparams->c0.x);
 		double half_d = 0.5 * (gparams->c1.y - gparams->c0.y);
 		double half_size = MAX(half_w, half_d);
@@ -2637,7 +2637,7 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 
 	/* Size culling for expanded platforms (skip entire subtree).
 	 * Use higher threshold for outline pass. */
-	if (!picking_mode && !dir_collapsed && NODE_IS_DIR(dnode) &&
+	if (!dir_collapsed && NODE_IS_DIR(dnode) &&
 	    dir_gparams->platform.depth > 0.0) {
 		double r_center = r0 + dir_gparams->platform.depth * 0.5;
 		double wt = acc_theta + dir_gparams->platform.theta;
