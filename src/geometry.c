@@ -68,159 +68,17 @@ static boolean picking_mode = FALSE;
 } while(0)
 
 
-/* Frustum culling */
+/* Low- and high-detail geometry display lists */
+static GLuint fstree_low_dlist = NULL_DLIST;
+static GLuint fstree_high_dlist = NULL_DLIST;
 
-/* Frustum plane: ax + by + cz + d >= 0 is inside */
-typedef struct {
-	double a, b, c, d;
-} FrustumPlane;
-
-/* Cached frustum data for the current frame */
-static FrustumPlane frustum_planes[6]; /* left, right, bottom, top, near, far */
-static double frustum_mvp[16]; /* combined MVP matrix */
-static double frustum_proj_scale; /* P[1][1] for screen-size estimation */
-static int frustum_viewport_h; /* viewport height in pixels */
-
-/* Minimum projected screen size in pixels before culling a subtree */
-#define CULL_SIZE_THRESHOLD 2.0
-
-/* Minimum projected screen size in pixels for labels to be drawn.
- * Below this threshold, labels are too small to read. */
-#define LABEL_SIZE_THRESHOLD 6.0
-
-/* Extracts frustum planes from the current GL matrices.
- * Call once per frame before any recursive draw. */
-static void
-frustum_extract( void )
-{
-	double mv[16], proj[16];
-	double *m = frustum_mvp;
-	double len;
-	int i, j;
-	GLint viewport[4];
-
-	glGetDoublev( GL_MODELVIEW_MATRIX, mv );
-	glGetDoublev( GL_PROJECTION_MATRIX, proj );
-	glGetIntegerv( GL_VIEWPORT, viewport );
-
-	frustum_proj_scale = proj[5]; /* P[1][1] = cot(fov/2) */
-	frustum_viewport_h = viewport[3];
-
-	/* Compute MVP = P * MV (column-major) */
-	for (j = 0; j < 4; j++) {
-		for (i = 0; i < 4; i++) {
-			m[j*4+i] = proj[i]*mv[j*4+0] + proj[4+i]*mv[j*4+1] +
-			            proj[8+i]*mv[j*4+2] + proj[12+i]*mv[j*4+3];
-		}
-	}
-
-	/* Gribb-Hartmann plane extraction from clip matrix rows */
-	#define ROW(r,c) m[(c)*4+(r)]
-	frustum_planes[0].a = ROW(3,0) + ROW(0,0);  /* Left */
-	frustum_planes[0].b = ROW(3,1) + ROW(0,1);
-	frustum_planes[0].c = ROW(3,2) + ROW(0,2);
-	frustum_planes[0].d = ROW(3,3) + ROW(0,3);
-	frustum_planes[1].a = ROW(3,0) - ROW(0,0);  /* Right */
-	frustum_planes[1].b = ROW(3,1) - ROW(0,1);
-	frustum_planes[1].c = ROW(3,2) - ROW(0,2);
-	frustum_planes[1].d = ROW(3,3) - ROW(0,3);
-	frustum_planes[2].a = ROW(3,0) + ROW(1,0);  /* Bottom */
-	frustum_planes[2].b = ROW(3,1) + ROW(1,1);
-	frustum_planes[2].c = ROW(3,2) + ROW(1,2);
-	frustum_planes[2].d = ROW(3,3) + ROW(1,3);
-	frustum_planes[3].a = ROW(3,0) - ROW(1,0);  /* Top */
-	frustum_planes[3].b = ROW(3,1) - ROW(1,1);
-	frustum_planes[3].c = ROW(3,2) - ROW(1,2);
-	frustum_planes[3].d = ROW(3,3) - ROW(1,3);
-	frustum_planes[4].a = ROW(3,0) + ROW(2,0);  /* Near */
-	frustum_planes[4].b = ROW(3,1) + ROW(2,1);
-	frustum_planes[4].c = ROW(3,2) + ROW(2,2);
-	frustum_planes[4].d = ROW(3,3) + ROW(2,3);
-	frustum_planes[5].a = ROW(3,0) - ROW(2,0);  /* Far */
-	frustum_planes[5].b = ROW(3,1) - ROW(2,1);
-	frustum_planes[5].c = ROW(3,2) - ROW(2,2);
-	frustum_planes[5].d = ROW(3,3) - ROW(2,3);
-	#undef ROW
-
-	/* Normalize planes */
-	for (i = 0; i < 6; i++) {
-		len = sqrt( frustum_planes[i].a * frustum_planes[i].a +
-		            frustum_planes[i].b * frustum_planes[i].b +
-		            frustum_planes[i].c * frustum_planes[i].c );
-		if (len > 0.0) {
-			frustum_planes[i].a /= len;
-			frustum_planes[i].b /= len;
-			frustum_planes[i].c /= len;
-			frustum_planes[i].d /= len;
-		}
-	}
-}
-
-
-/* Tests an axis-aligned bounding box against the frustum.
- * Returns TRUE if the AABB is at least partially inside (should be drawn).
- * Returns FALSE if fully outside (can be culled). */
-static boolean
-frustum_test_aabb( double x0, double y0, double z0,
-                   double x1, double y1, double z1 )
-{
-	int i;
-	double px, py, pz;
-
-	for (i = 0; i < 6; i++) {
-		/* Find the "positive vertex" -- the corner most in the
-		 * direction of the plane normal */
-		px = (frustum_planes[i].a >= 0.0) ? x1 : x0;
-		py = (frustum_planes[i].b >= 0.0) ? y1 : y0;
-		pz = (frustum_planes[i].c >= 0.0) ? z1 : z0;
-
-		if (frustum_planes[i].a * px + frustum_planes[i].b * py +
-		    frustum_planes[i].c * pz + frustum_planes[i].d < 0.0)
-			return FALSE;
-	}
-
-	return TRUE;
-}
-
-
-/* Tests a bounding sphere against the frustum.
- * Returns TRUE if at least partially inside, FALSE if fully outside. */
-static boolean
-frustum_test_sphere( double cx, double cy, double cz, double radius )
-{
-	int i;
-
-	for (i = 0; i < 6; i++) {
-		if (frustum_planes[i].a * cx + frustum_planes[i].b * cy +
-		    frustum_planes[i].c * cz + frustum_planes[i].d < -radius)
-			return FALSE;
-	}
-
-	return TRUE;
-}
-
-
-/* Estimates the projected screen size (in pixels) of a sphere
- * at the given world-space position. Returns HUGE_VAL if at or
- * behind the camera (don't cull). */
-static double
-screen_size_pixels( double cx, double cy, double cz, double radius )
-{
-	double *m = frustum_mvp;
-	double w;
-
-	/* Compute clip-space W = row3 dot (cx, cy, cz, 1) */
-	w = m[3] * cx + m[7] * cy + m[11] * cz + m[15];
-	if (w <= 0.0)
-		return HUGE_VAL; /* At or behind camera */
-
-	return radius * frustum_proj_scale * (double)frustum_viewport_h / w;
-}
-
-
-/* TreeV arrangement flag: set when tree geometry changes,
- * cleared after treev_arrange() runs */
-static boolean treev_needs_arrange = FALSE;
+/* Current "drawing stage" for low- and high-detail geometry:
+ * Stage 0: Full recursive draw, some geometry will be rebuilt along the way
+ * Stage 1: Full recursive draw, no geometry rebuilt, capture everything in
+ *          a display list (fstree_*_dlist, see above)
+ * Stage 2: Fast draw using display list from stage 1 (no recursion) */
+static int fstree_low_draw_stage;
+static int fstree_high_draw_stage;
 
 
 /* Forward declarations */
@@ -542,38 +400,18 @@ discv_apply_label( GNode *node )
 }
 
 
-/* Helper function for discv_draw( ).
- * acc_x/acc_y: accumulated world-space position of this node's center.
- * acc_scale: accumulated scale factor (product of ancestor deployments). */
+/* Helper function for discv_draw( ) */
 static void
-discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, double acc_scale )
+discv_draw_recursive( GNode *dnode, int action )
 {
 	DirNodeDesc *dir_ndesc;
 	DiscVGeomParams *dir_gparams;
 	GNode *node;
 	boolean dir_collapsed;
 	boolean dir_expanded;
-	double world_x, world_y, world_scale, world_radius;
-	boolean visible;
 
 	dir_ndesc = DIR_NODE_DESC(dnode);
 	dir_gparams = DISCV_GEOM_PARAMS(dnode);
-
-	/* Compute world-space bounding sphere */
-	world_x = acc_x + acc_scale * dir_gparams->pos.x;
-	world_y = acc_y + acc_scale * dir_gparams->pos.y;
-	world_scale = acc_scale * dir_ndesc->deployment;
-	world_radius = world_scale * dir_gparams->radius;
-
-	/* Size culling: skip entire subtree if projected size is tiny */
-	if (!picking_mode && world_radius > 0.0 &&
-	    screen_size_pixels( world_x, world_y, 0.0, world_radius ) < CULL_SIZE_THRESHOLD)
-		return;
-
-	/* Frustum culling: test if this node's disc is on-screen
-	 * (don't skip subtree -- children may extend beyond parent disc) */
-	visible = picking_mode || world_radius <= 0.0 ||
-	          frustum_test_sphere( world_x, world_y, 0.0, world_radius );
 
 	glPushMatrix( );
 
@@ -583,7 +421,7 @@ discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, doub
 	glTranslated( dir_gparams->pos.x, dir_gparams->pos.y, 0.0 );
 	glScaled( dir_ndesc->deployment,  dir_ndesc->deployment,  1.0 );
 
-	if (visible && action == DISCV_DRAW_GEOMETRY) {
+	if (action == DISCV_DRAW_GEOMETRY) {
 		/* Draw folder or leaf nodes (display list A) */
 		if (picking_mode) {
 			/* Pick mode: draw directly, bypass display lists */
@@ -606,9 +444,7 @@ discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, doub
 			glCallList( dir_ndesc->a_dlist );
 	}
 
-	if (visible && action == DISCV_DRAW_LABELS &&
-	    !(world_radius > 0.0 &&
-	      screen_size_pixels( world_x, world_y, 0.0, world_radius ) < LABEL_SIZE_THRESHOLD)) {
+	if (action == DISCV_DRAW_LABELS) {
 		/* Draw name label(s) (display list B) */
 		if (dir_ndesc->b_dlist_stale) {
 			/* Rebuild */
@@ -628,7 +464,7 @@ discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, doub
 			glCallList( dir_ndesc->b_dlist );
 	}
 
-	/* Update geometry status (always, even if frustum-culled) */
+	/* Update geometry status */
 	dir_ndesc->geom_expanded = !dir_collapsed;
 
 	if (dir_expanded) {
@@ -637,7 +473,7 @@ discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, doub
 		while (node != NULL) {
                         if (!NODE_IS_DIR(node))
 				break;
-			discv_draw_recursive( node, action, world_x, world_y, world_scale );
+			discv_draw_recursive( node, action );
 			node = node->next;
 		}
 	}
@@ -650,19 +486,44 @@ discv_draw_recursive( GNode *dnode, int action, double acc_x, double acc_y, doub
 static void
 discv_draw( boolean high_detail )
 {
-	frustum_extract( );
-
 	glLineWidth( 3.0 );
 
-	/* Draw low-detail geometry (culled tree walk) */
-	discv_draw_recursive( globals.fstree, DISCV_DRAW_GEOMETRY, 0.0, 0.0, 1.0 );
+	/* Draw low-detail geometry */
+
+	if (fstree_low_draw_stage == 1)
+		glNewList( fstree_low_dlist, GL_COMPILE_AND_EXECUTE );
+
+	if (fstree_low_draw_stage <= 1)
+		discv_draw_recursive( globals.fstree, DISCV_DRAW_GEOMETRY );
+	else
+		glCallList( fstree_low_dlist );
+
+	if (fstree_low_draw_stage == 1)
+		glEndList( );
+	if (fstree_low_draw_stage <= 1)
+		++fstree_low_draw_stage;
+
 
 	if (high_detail) {
-		/* Node name labels */
-		text_pre( );
-		glColor3f( 0.0, 0.0, 0.0 );
-		discv_draw_recursive( globals.fstree, DISCV_DRAW_LABELS, 0.0, 0.0, 1.0 );
-		text_post( );
+		/* Draw additional high-detail geometry */
+
+		if (fstree_high_draw_stage == 1)
+			glNewList( fstree_high_dlist, GL_COMPILE_AND_EXECUTE );
+
+		if (fstree_high_draw_stage <= 1) {
+			/* Node name labels */
+			text_pre( );
+			glColor3f( 0.0, 0.0, 0.0 );
+			discv_draw_recursive( globals.fstree, DISCV_DRAW_LABELS );
+			text_post( );
+		}
+		else
+			glCallList( fstree_high_dlist );
+
+		if (fstree_high_draw_stage == 1)
+			glEndList( );
+		if (fstree_high_draw_stage <= 1)
+			++fstree_high_draw_stage;
 
 		/* Node cursor */
 		discv_draw_cursor( CURSOR_POS(camera->pan_part) );
@@ -1234,45 +1095,19 @@ mapv_apply_label( GNode *node )
 }
 
 
-/* MapV mode "full draw".
- * acc_z: accumulated Z offset from parent heights. */
+/* MapV mode "full draw" */
 static void
-mapv_draw_recursive( GNode *dnode, int action, double acc_z )
+mapv_draw_recursive( GNode *dnode, int action )
 {
 	DirNodeDesc *dir_ndesc;
-	MapVGeomParams *gparams;
 	GNode *node;
 	boolean dir_collapsed;
 	boolean dir_expanded;
-	double node_z;
 
 	g_assert( NODE_IS_DIR(dnode) || NODE_IS_METANODE(dnode) );
 
-	gparams = MAPV_GEOM_PARAMS(dnode);
-	node_z = acc_z + gparams->height;
-
-	/* Frustum + size culling (children are within parent's XY footprint,
-	 * so culling the parent culls the entire subtree) */
-	if (!picking_mode && NODE_IS_DIR(dnode)) {
-		double half_w = 0.5 * (gparams->c1.x - gparams->c0.x);
-		double half_d = 0.5 * (gparams->c1.y - gparams->c0.y);
-		double half_size = MAX(half_w, half_d);
-		double cx = gparams->c0.x + half_w;
-		double cy = gparams->c0.y + half_d;
-
-		/* Screen-size cull: skip entire subtree if too small */
-		if (half_size > 0.0 &&
-		    screen_size_pixels( cx, cy, node_z, half_size ) < CULL_SIZE_THRESHOLD)
-			return;
-
-		/* Frustum cull: test XY footprint with generous Z range */
-		if (!frustum_test_aabb( gparams->c0.x, gparams->c0.y, acc_z - 1.0,
-		                        gparams->c1.x, gparams->c1.y, acc_z + 1e9 ))
-			return;
-	}
-
 	glPushMatrix( );
-	glTranslated( 0.0, 0.0, gparams->height );
+	glTranslated( 0.0, 0.0, MAPV_GEOM_PARAMS(dnode)->height );
 
 	dir_ndesc = DIR_NODE_DESC(dnode);
 	dir_collapsed = DIR_COLLAPSED(dnode);
@@ -1311,38 +1146,30 @@ mapv_draw_recursive( GNode *dnode, int action, double acc_z )
 	}
 
 	if (action == MAPV_DRAW_LABELS) {
-		/* Label distance culling: skip if too small to read */
-		double lhs = 0.5 * MAX(gparams->c1.x - gparams->c0.x,
-		                       gparams->c1.y - gparams->c0.y);
-		if (lhs <= 0.0 ||
-		    screen_size_pixels( 0.5 * (gparams->c0.x + gparams->c1.x),
-		                        0.5 * (gparams->c0.y + gparams->c1.y),
-		                        node_z, lhs ) >= LABEL_SIZE_THRESHOLD) {
-			/* Draw name label(s) (display list B) */
-			if (dir_ndesc->b_dlist_stale) {
-				/* Rebuild */
-				if (dir_ndesc->b_dlist == NULL_DLIST)
-					dir_ndesc->b_dlist = glGenLists( 1 );
-				glNewList( dir_ndesc->b_dlist, GL_COMPILE_AND_EXECUTE );
-				if (dir_collapsed) {
-					/* Label directory */
-					mapv_apply_label( dnode );
-				}
-				else {
-					/* Label non-subdirectory children */
-					node = dnode->children;
-					while (node != NULL) {
-						if (!NODE_IS_DIR(node))
-							mapv_apply_label( node );
-						node = node->next;
-					}
-				}
-				glEndList( );
-				dir_ndesc->b_dlist_stale = FALSE;
+		/* Draw name label(s) (display list B) */
+		if (dir_ndesc->b_dlist_stale) {
+			/* Rebuild */
+			if (dir_ndesc->b_dlist == NULL_DLIST)
+				dir_ndesc->b_dlist = glGenLists( 1 );
+			glNewList( dir_ndesc->b_dlist, GL_COMPILE_AND_EXECUTE );
+			if (dir_collapsed) {
+				/* Label directory */
+				mapv_apply_label( dnode );
 			}
-			else
-				glCallList( dir_ndesc->b_dlist );
+			else {
+				/* Label non-subdirectory children */
+				node = dnode->children;
+				while (node != NULL) {
+					if (!NODE_IS_DIR(node))
+						mapv_apply_label( node );
+					node = node->next;
+				}
+			}
+			glEndList( );
+			dir_ndesc->b_dlist_stale = FALSE;
 		}
+		else
+			glCallList( dir_ndesc->b_dlist );
 	}
 
 	/* Update geometry status */
@@ -1354,7 +1181,7 @@ mapv_draw_recursive( GNode *dnode, int action, double acc_z )
 		while (node != NULL) {
 			if (!NODE_IS_DIR(node))
 				break;
-			mapv_draw_recursive( node, action, node_z );
+			mapv_draw_recursive( node, action );
 			node = node->next;
 		}
 	}
@@ -1459,22 +1286,49 @@ mapv_draw_cursor( double pos )
 static void
 mapv_draw( boolean high_detail )
 {
-	frustum_extract( );
+	/* Draw low-detail geometry */
 
-	/* Draw low-detail geometry (culled tree walk) */
-	mapv_draw_recursive( globals.fstree, MAPV_DRAW_GEOMETRY, 0.0 );
+	if (fstree_low_draw_stage == 1)
+		glNewList( fstree_low_dlist, GL_COMPILE_AND_EXECUTE );
+
+	if (fstree_low_draw_stage <= 1)
+		mapv_draw_recursive( globals.fstree, MAPV_DRAW_GEOMETRY );
+	else
+		glCallList( fstree_low_dlist );
+
+	if (fstree_low_draw_stage == 1)
+		glEndList( );
+	if (fstree_low_draw_stage <= 1)
+		++fstree_low_draw_stage;
 
 	if (high_detail) {
-		/* "Cel lines" */
-		outline_pre( );
-		mapv_draw_recursive( globals.fstree, MAPV_DRAW_GEOMETRY, 0.0 );
-		outline_post( );
+		/* Draw additional high-detail stuff */
 
-		/* Node name labels */
-		text_pre( );
-		glColor3f( 0.0, 0.0, 0.0 );
-		mapv_draw_recursive( globals.fstree, MAPV_DRAW_LABELS, 0.0 );
-		text_post( );
+		if (fstree_high_draw_stage == 1)
+			glNewList( fstree_high_dlist, GL_COMPILE_AND_EXECUTE );
+
+		if (fstree_high_draw_stage <= 1) {
+			/* "Cel lines" */
+			outline_pre( );
+			if (fstree_low_draw_stage <= 1)
+				mapv_draw_recursive( globals.fstree, MAPV_DRAW_GEOMETRY );
+			else
+				glCallList( fstree_low_dlist ); /* shortcut */
+			outline_post( );
+
+			/* Node name labels */
+			text_pre( );
+			glColor3f( 0.0, 0.0, 0.0 ); /* all labels are black */
+			mapv_draw_recursive( globals.fstree, MAPV_DRAW_LABELS );
+			text_post( );
+		}
+		else
+			glCallList( fstree_high_dlist );
+
+		if (fstree_high_draw_stage == 1)
+			glEndList( );
+		if (fstree_high_draw_stage <= 1)
+			++fstree_high_draw_stage;
 
 		/* Node cursor */
 		mapv_draw_cursor( CURSOR_POS(camera->pan_part) );
@@ -1967,7 +1821,6 @@ treev_init( void )
 
 	treev_init_recursive( globals.fstree );
 	treev_arrange( TRUE );
-	treev_needs_arrange = FALSE;
 
 	/* Initial cursor state */
 	treev_get_corners( root_dnode, &treev_cursor_prev_c0, &treev_cursor_prev_c1 );
@@ -2595,10 +2448,9 @@ treev_apply_label( GNode *node, double r0, boolean is_leaf )
 }
 
 
-/* TreeV mode "full draw".
- * acc_theta: accumulated world-space rotation angle from ancestors. */
+/* TreeV mode "full draw" */
 static boolean
-treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, double acc_theta )
+treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action )
 {
 	DirNodeDesc *dir_ndesc;
 	TreeVGeomParams *dir_gparams;
@@ -2614,23 +2466,10 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 	dir_ndesc = DIR_NODE_DESC(dnode);
 	dir_gparams = TREEV_GEOM_PARAMS(dnode);
 
+	glPushMatrix( );
+
 	dir_collapsed = DIR_COLLAPSED(dnode);
         dir_expanded = DIR_EXPANDED(dnode);
-
-	/* Size culling for expanded platforms (skip entire subtree) */
-	if (!picking_mode && !dir_collapsed && NODE_IS_DIR(dnode) &&
-	    dir_gparams->platform.depth > 0.0) {
-		double r_center = r0 + dir_gparams->platform.depth * 0.5;
-		double wt = acc_theta + dir_gparams->platform.theta;
-		double pcx = r_center * cos( RAD(wt) );
-		double pcy = r_center * sin( RAD(wt) );
-
-		if (screen_size_pixels( pcx, pcy, 0.0,
-		    dir_gparams->platform.depth * 0.5 ) < CULL_SIZE_THRESHOLD)
-			return FALSE;
-	}
-
-	glPushMatrix( );
 
 	if (!dir_collapsed) {
 		if (!dir_expanded) {
@@ -2700,13 +2539,12 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 
 	if (!dir_collapsed) {
 		/* Recurse into subdirectories */
-		double new_acc_theta = acc_theta + dir_gparams->platform.theta;
 		subtree_r0 = r0 + dir_gparams->platform.depth + TREEV_PLATFORM_SPACING_DEPTH;
 		node = dnode->children;
 		while (node != NULL) {
 			if (!NODE_IS_DIR(node))
 				break;
-			if (treev_draw_recursive( node, r0, subtree_r0, action, new_acc_theta )) {
+			if (treev_draw_recursive( node, r0, subtree_r0, action )) {
 				/* This subdirectory is expanded.
 				 * Save first/last node information for
 				 * drawing interconnecting branches */
@@ -2748,53 +2586,35 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 	}
 
 	if (action == TREEV_DRAW_LABELS) {
-		/* Label distance culling */
-		boolean label_vis = TRUE;
-		if (NODE_IS_DIR(dnode) && !dir_collapsed && dir_gparams->platform.depth > 0.0) {
-			double pr = r0 + dir_gparams->platform.depth * 0.5;
-			double pt = acc_theta + dir_gparams->platform.theta;
-			if (screen_size_pixels( pr * cos( RAD(pt) ), pr * sin( RAD(pt) ),
-			    0.0, dir_gparams->platform.depth * 0.5 ) < LABEL_SIZE_THRESHOLD)
-				label_vis = FALSE;
-		}
-		else if (dir_collapsed) {
-			double lr = prev_r0 + dir_gparams->leaf.distance;
-			double lt = acc_theta + dir_gparams->leaf.theta;
-			if (screen_size_pixels( lr * cos( RAD(lt) ), lr * sin( RAD(lt) ),
-			    0.0, TREEV_LEAF_NODE_EDGE * 0.5 ) < LABEL_SIZE_THRESHOLD)
-				label_vis = FALSE;
-		}
-		if (label_vis) {
-			/* Draw name label(s) (display list C) */
-			if (dir_ndesc->c_dlist_stale) {
-				/* Rebuild */
-				if (dir_ndesc->c_dlist == NULL_DLIST)
-					dir_ndesc->c_dlist = glGenLists( 1 );
-				glNewList( dir_ndesc->c_dlist, GL_COMPILE_AND_EXECUTE );
-				if (dir_collapsed) {
-					/* Label directory leaf */
-					glColor3fv( (float *)&treev_leaf_label_color );
-					treev_apply_label( dnode, prev_r0, TRUE );
-				}
-				else if (NODE_IS_DIR(dnode)) {
-					/* Label directory platform */
-					glColor3fv( (float *)&treev_platform_label_color );
-					treev_apply_label( dnode, r0, FALSE );
-					/* Label leaf nodes that aren't directories */
-					glColor3fv( (float *)&treev_leaf_label_color );
-					node = dnode->children;
-					while (node != NULL) {
-						if (!NODE_IS_DIR(node))
-							treev_apply_label( node, r0, TRUE );
-						node = node->next;
-					}
-				}
-				glEndList( );
-				dir_ndesc->c_dlist_stale = FALSE;
+		/* Draw name label(s) (display list C) */
+		if (dir_ndesc->c_dlist_stale) {
+			/* Rebuild */
+			if (dir_ndesc->c_dlist == NULL_DLIST)
+				dir_ndesc->c_dlist = glGenLists( 1 );
+			glNewList( dir_ndesc->c_dlist, GL_COMPILE_AND_EXECUTE );
+			if (dir_collapsed) {
+				/* Label directory leaf */
+				glColor3fv( (float *)&treev_leaf_label_color );
+				treev_apply_label( dnode, prev_r0, TRUE );
 			}
-			else
-				glCallList( dir_ndesc->c_dlist );
+			else if (NODE_IS_DIR(dnode)) {
+				/* Label directory platform */
+				glColor3fv( (float *)&treev_platform_label_color );
+				treev_apply_label( dnode, r0, FALSE );
+				/* Label leaf nodes that aren't directories */
+				glColor3fv( (float *)&treev_leaf_label_color );
+				node = dnode->children;
+				while (node != NULL) {
+					if (!NODE_IS_DIR(node))
+						treev_apply_label( node, r0, TRUE );
+					node = node->next;
+				}
+			}
+			glEndList( );
+			dir_ndesc->c_dlist_stale = FALSE;
 		}
+		else
+			glCallList( dir_ndesc->c_dlist );
 	}
 
 	/* Update geometry status */
@@ -2924,26 +2744,48 @@ treev_draw_cursor( double pos )
 static void
 treev_draw( boolean high_detail )
 {
-	if (treev_needs_arrange) {
+	if ((fstree_low_draw_stage == 0) || (fstree_high_draw_stage == 0))
 		treev_arrange( FALSE );
-		treev_needs_arrange = FALSE;
-	}
 
-	frustum_extract( );
+	/* Draw low-detail geometry */
 
-	/* Draw low-detail geometry (culled tree walk) */
-	treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_GEOMETRY_WITH_BRANCHES, 0.0 );
+	if (fstree_low_draw_stage == 1)
+		glNewList( fstree_low_dlist, GL_COMPILE_AND_EXECUTE );
+
+	if (fstree_low_draw_stage <= 1)
+		treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_GEOMETRY_WITH_BRANCHES );
+	else
+		glCallList( fstree_low_dlist );
+
+	if (fstree_low_draw_stage == 1)
+		glEndList( );
+	if (fstree_low_draw_stage <= 1)
+		++fstree_low_draw_stage;
 
 	if (high_detail) {
-		/* "Cel lines" */
-		outline_pre( );
-		treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_GEOMETRY, 0.0 );
-		outline_post( );
+		/* Draw additional high-detail stuff */
 
-		/* Node name labels */
-		text_pre( );
-		treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_LABELS, 0.0 );
-		text_post( );
+		if (fstree_high_draw_stage == 1)
+			glNewList( fstree_high_dlist, GL_COMPILE_AND_EXECUTE );
+
+		if (fstree_high_draw_stage <= 1) {
+			/* "Cel lines" */
+			outline_pre( );
+			treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_GEOMETRY );
+			outline_post( );
+
+			/* Node name labels */
+			text_pre( );
+			treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_LABELS );
+			text_post( );
+		}
+		else
+			glCallList( fstree_high_dlist );
+
+		if (fstree_high_draw_stage == 1)
+			glEndList( );
+		if (fstree_high_draw_stage <= 1)
+			++fstree_high_draw_stage;
 
 		/* Node cursor */
 		treev_draw_cursor( CURSOR_POS(camera->pan_part) );
@@ -3016,14 +2858,15 @@ cursor_post( void )
 }
 
 
-/* Invalidates cached rendering state. Called when geometry or
- * scene state changes. Per-directory display lists handle their
- * own stale flags; this just invalidates the pick FBO cache and
- * flags TreeV for rearrangement. */
+/* Zeroes the drawing stages for both low- and high-detail geometry, so
+ * that a full recursive draw is performed in the next frame without
+ * the use of display lists (i.e. caches). This is necessary whenever
+ * any geometry needs to be (re)built */
 static void
 queue_uncached_draw( void )
 {
-	treev_needs_arrange = TRUE;
+	fstree_low_draw_stage = 0;
+	fstree_high_draw_stage = 0;
 	ogl_pick_invalidate( );
 }
 
@@ -3044,6 +2887,12 @@ geometry_queue_rebuild( GNode *dnode )
 void
 geometry_init( FsvMode mode )
 {
+	/* Allocate filesystem display lists (first time only) */
+	if (fstree_low_dlist == NULL_DLIST)
+		fstree_low_dlist = glGenLists( 1 );
+	if (fstree_high_dlist == NULL_DLIST)
+		fstree_high_dlist = glGenLists( 1 );
+
 	DIR_NODE_DESC(globals.fstree)->deployment = 1.0;
 	geometry_queue_rebuild( globals.fstree );
 
@@ -3207,12 +3056,20 @@ splash_draw( void )
 
 
 /* Draw geometry in color-picking mode (node IDs encoded as colors).
- * Per-directory display list caching is bypassed since pick colors
- * differ from normal colors. */
+ * Display list caching must be bypassed since pick colors differ
+ * from normal colors. We save/restore the draw stages so normal
+ * rendering is unaffected. */
 void
 geometry_draw_for_pick( void )
 {
+	int save_low_stage = fstree_low_draw_stage;
+	int save_high_stage = fstree_high_draw_stage;
+
 	picking_mode = TRUE;
+
+	/* Force uncached draw (stage 0 = full recursive, no caching) */
+	fstree_low_draw_stage = 0;
+	fstree_high_draw_stage = 0;
 
 	glInitNames( );
 	glPushName( 0 );
@@ -3233,6 +3090,10 @@ geometry_draw_for_pick( void )
 		default:
 		break;
 	}
+
+	/* Restore draw stages so normal rendering continues to use caches */
+	fstree_low_draw_stage = save_low_stage;
+	fstree_high_draw_stage = save_high_stage;
 
 	picking_mode = FALSE;
 }

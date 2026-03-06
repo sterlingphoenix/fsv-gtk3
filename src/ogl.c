@@ -211,9 +211,7 @@ void
 ogl_draw( void )
 {
 	static FsvMode prev_mode = FSV_NONE;
-#ifdef DEBUG
 	int err;
-#endif
 
 	geometry_highlight_node( NULL, TRUE );
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -222,12 +220,10 @@ ogl_draw( void )
 	setup_modelview_matrix( );
 	geometry_draw( TRUE );
 
-#ifdef DEBUG
-	/* Error check (causes GPU pipeline sync -- debug only) */
+	/* Error check */
 	err = glGetError( );
 	if (err != 0)
 		g_warning( "GL error: 0x%X", err );
-#endif
 
 	/* First frame after a mode switch is not drawn
 	 * (with the exception of splash screen mode) */
