@@ -222,6 +222,11 @@ screen_size_pixels( double cx, double cy, double cz, double radius )
  * cleared after treev_arrange() runs */
 static boolean treev_needs_arrange = FALSE;
 
+/* TRUE during treev_draw() when tree positions are actively changing
+ * (colexp animation). Branch display lists are drawn directly instead
+ * of compiled, since they'll change again next frame. */
+static boolean treev_animating = FALSE;
+
 
 /* Forward declarations */
 static void outline_pre( void );
@@ -2719,12 +2724,15 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 	}
 
 	if (dir_expanded && (action == TREEV_DRAW_GEOMETRY_WITH_BRANCHES) && !picking_mode) {
-		/* Draw interconnecting branches (display list B) */
+		/* Draw interconnecting branches (display list B).
+		 * During animation, draw directly to avoid compiling
+		 * display lists that will be stale next frame. */
 		if (dir_ndesc->b_dlist_stale) {
-			/* Rebuild */
-			if (dir_ndesc->b_dlist == NULL_DLIST)
-				dir_ndesc->b_dlist = glGenLists( 1 );
-			glNewList( dir_ndesc->b_dlist, GL_COMPILE_AND_EXECUTE );
+			if (!treev_animating) {
+				if (dir_ndesc->b_dlist == NULL_DLIST)
+					dir_ndesc->b_dlist = glGenLists( 1 );
+				glNewList( dir_ndesc->b_dlist, GL_COMPILE_AND_EXECUTE );
+			}
 			glLoadName( NODE_DESC(dnode)->id );
 			glColor3fv( (float *)&branch_color );
 			glNormal3d( 0.0, 0.0, 1.0 );
@@ -2740,8 +2748,10 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 					treev_gldraw_outbranch( r0 + dir_gparams->platform.depth, theta0, theta1 );
 				}
 			}
-			glEndList( );
-			dir_ndesc->b_dlist_stale = FALSE;
+			if (!treev_animating) {
+				glEndList( );
+				dir_ndesc->b_dlist_stale = FALSE;
+			}
 		}
 		else
 			glCallList( dir_ndesc->b_dlist );
@@ -2924,6 +2934,7 @@ treev_draw_cursor( double pos )
 static void
 treev_draw( boolean high_detail )
 {
+	treev_animating = treev_needs_arrange;
 	if (treev_needs_arrange) {
 		treev_arrange( FALSE );
 		treev_needs_arrange = FALSE;

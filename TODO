@@ -231,7 +231,7 @@ Step 5.2 - Label distance culling
       of each label from camera distance and world-space size
   [x] Skip labels whose projected height is below a legibility threshold
       (e.g., 6 pixels)
-  [ ] Verify: labels appear/disappear smoothly as the camera zooms in/out;
+  [x] Verify: labels appear/disappear smoothly as the camera zooms in/out;
       no visual artifacts
 
   Checkpoint: User tests by zooming in and out on a large expanded tree
@@ -239,10 +239,10 @@ Step 5.2 - Label distance culling
   and rendering is faster when zoomed out.
 
 Step 5.3 - Reduce tree walks during collapse/expand animation
-  [ ] During colexp animation, only rebuild per-directory display lists
+  [x] During colexp animation, only rebuild per-directory display lists
       for the directory whose geometry actually changed (geom_expanded
       transition), not every frame
-  [ ] On animation frames where no per-directory lists are stale, skip
+  [x] On animation frames where no per-directory lists are stale, skip
       the Stage 0 "rebuild stale" pass and go directly to the culled
       tree walk
   [ ] Verify: expand/collapse animations are visually correct and
