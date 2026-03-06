@@ -275,7 +275,7 @@ Step 5.5 - Pick rendering optimization
       (Pick FBO already uses lazy invalidation — re-rendered only when
       ogl_color_pick() is called. Camera pans change the projection so
       the FBO must be re-rendered. Current approach is already optimal.)
-  [ ] Verify: node selection via click and hover still works correctly
+  [x] Verify: node selection via click and hover still works correctly
       for all visible nodes; no misidentification
 
   Checkpoint: User tests by hovering and clicking on nodes in a large
