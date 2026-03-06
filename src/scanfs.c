@@ -26,6 +26,7 @@
 #include "scanfs.h"
 
 #include <dirent.h>
+#include <limits.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <gtk/gtk.h>
@@ -61,13 +62,14 @@ static int64 size_counts[NUM_NODE_TYPES];
 static int stat_count = 0;
 
 
-/* Official stat function. Returns 0 on success, -1 on error */
+/* Official stat function. Returns 0 on success, -1 on error.
+ * The path argument is the absolute path to stat. */
 static int
-stat_node( GNode *node )
+stat_node( GNode *node, const char *path )
 {
 	struct stat st;
 
-	if (lstat( node_absname( node ), &st ))
+	if (lstat( path, &st ))
 		return -1;
 
 	/* Determine node type */
@@ -123,6 +125,12 @@ de_select( const struct dirent *de )
 }
 
 
+/* Minimum interval between UI updates during scan (seconds) */
+#define SCAN_UI_UPDATE_INTERVAL 0.05
+
+/* Timestamp of last UI update during scan */
+static double scan_last_ui_update;
+
 static int
 process_dir( const char *dir, GNode *dnode )
 {
@@ -130,7 +138,9 @@ process_dir( const char *dir, GNode *dnode )
 	struct dirent **dir_entries;
 	GNode *node;
 	int num_entries, i;
+	int dir_len;
 	char strbuf[1024];
+	char pathbuf[PATH_MAX];
 
 	/* Scan in directory entries */
 	num_entries = scandir( dir, &dir_entries, de_select, alphasort );
@@ -141,13 +151,23 @@ process_dir( const char *dir, GNode *dnode )
 	snprintf( strbuf, sizeof(strbuf), _("Scanning: %s"), dir );
 	window_statusbar( SB_RIGHT, strbuf );
 
+	/* Prepare path buffer: "dir/" prefix, entry name appended per iteration */
+	dir_len = strlen( dir );
+	memcpy( pathbuf, dir, dir_len );
+	if (dir_len > 0 && pathbuf[dir_len - 1] != '/')
+		pathbuf[dir_len++] = '/';
+
 	/* Process directory entries */
 	for (i = 0; i < num_entries; i++) {
+		/* Build full path for this entry */
+		strncpy( &pathbuf[dir_len], dir_entries[i]->d_name, PATH_MAX - dir_len - 1 );
+		pathbuf[PATH_MAX - 1] = '\0';
+
 		/* Create new node */
 		node = g_node_prepend_data( dnode, &any_node_desc );
 		NODE_DESC(node)->id = node_id;
 		NODE_DESC(node)->name = g_string_chunk_insert( name_strchunk, dir_entries[i]->d_name );
-		if (stat_node( node )) {
+		if (stat_node( node, pathbuf )) {
 			/* Stat failed */
 			g_node_unlink( node );
 			g_node_destroy( node );
@@ -164,8 +184,8 @@ process_dir( const char *dir, GNode *dnode )
 			DIR_NODE_DESC(node)->b_dlist = NULL_DLIST;
 			DIR_NODE_DESC(node)->c_dlist = NULL_DLIST;
 
-			/* Recurse down */
-			process_dir( node_absname( node ), node );
+			/* Recurse down using the already-built path */
+			process_dir( pathbuf, node );
 
 			/* Move new descriptor into working memory */
 			andesc = (union AnyNodeDesc *)g_slice_new0( DirNodeDesc );
@@ -186,8 +206,14 @@ process_dir( const char *dir, GNode *dnode )
 
 		free( dir_entries[i] ); /* !xfree */
 
-		/* Keep the user interface responsive */
-		gui_update( );
+		/* Keep the user interface responsive (throttled) */
+		{
+			double now = xgettime( );
+			if (now - scan_last_ui_update >= SCAN_UI_UPDATE_INTERVAL) {
+				gui_update( );
+				scan_last_ui_update = now;
+			}
+		}
 	}
 
 	free( dir_entries ); /* !xfree */
@@ -361,12 +387,13 @@ scanfs( const char *dir )
 	DIR_NODE_DESC(root_dnode)->a_dlist = NULL_DLIST;
 	DIR_NODE_DESC(root_dnode)->b_dlist = NULL_DLIST;
 	DIR_NODE_DESC(root_dnode)->c_dlist = NULL_DLIST;
-	stat_node( root_dnode );
+	stat_node( root_dnode, root_dir );
 	dirtree_entry_new( root_dnode );
 
 	/* GUI stuff */
 	filelist_scan_monitor_init( );
 	handler_id = g_timeout_add( SCAN_MONITOR_PERIOD, scan_monitor, NULL );
+	scan_last_ui_update = xgettime( );
 
 	/* Let the disk thrashing begin */
 	process_dir( root_dir, root_dnode );
