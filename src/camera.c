@@ -1467,4 +1467,74 @@ camera_revolve( double dtheta, double dphi )
 }
 
 
+/* Pans camera target in screen-space directions.
+ * dx > 0 moves the view right, dy > 0 moves the view down.
+ * Works in all three visualization modes. */
+void
+camera_pan( double dx, double dy )
+{
+	double scale = camera->distance * tan( RAD(0.5 * camera->fov) ) / 180.0;
+
+	switch (globals.fsv_mode) {
+		case FSV_DISCV:
+		/* 2D top-down: pan target in XY plane */
+		DISCV_CAMERA(camera)->target.x += dx * scale;
+		DISCV_CAMERA(camera)->target.y -= dy * scale;
+		break;
+
+		case FSV_MAPV:
+		{
+			/* Screen-right and screen-up vectors in world space,
+			 * derived from the camera heading (theta) and
+			 * elevation (phi) angles */
+			double th = RAD(camera->theta);
+			double ph = RAD(camera->phi);
+			double rx = -sin( th );
+			double ry =  cos( th );
+			double ux = -cos( th ) * sin( ph );
+			double uy = -sin( th ) * sin( ph );
+			double uz =  cos( ph );
+
+			MAPV_CAMERA(camera)->target.x += (dx * rx + dy * ux) * scale;
+			MAPV_CAMERA(camera)->target.y += (dx * ry + dy * uy) * scale;
+			MAPV_CAMERA(camera)->target.z += dy * uz * scale;
+		}
+		break;
+
+		case FSV_TREEV:
+		{
+			/* Effective heading combines camera orbit angle
+			 * and target angular position */
+			double eff = RAD(camera->theta + TREEV_CAMERA(camera)->target.theta);
+			double ph = RAD(camera->phi);
+			double rx =  sin( eff );
+			double ry = -cos( eff );
+			double ux =  cos( eff ) * sin( ph );
+			double uy =  sin( eff ) * sin( ph );
+			double uz =  cos( ph );
+
+			/* Pan in Cartesian, then convert back to cylindrical */
+			double old_r = TREEV_CAMERA(camera)->target.r;
+			double old_th = RAD(TREEV_CAMERA(camera)->target.theta);
+			double wx = old_r * cos( old_th ) + (dx * rx + dy * ux) * scale;
+			double wy = old_r * sin( old_th ) + (dx * ry + dy * uy) * scale;
+
+			TREEV_CAMERA(camera)->target.r = sqrt( wx * wx + wy * wy );
+			TREEV_CAMERA(camera)->target.theta = atan2( wy, wx ) / (PI / 180.0);
+			TREEV_CAMERA(camera)->target.z += dy * uz * scale;
+		}
+		break;
+
+		SWITCH_FAIL
+	}
+
+	/* Camera is under user control */
+	camera->manual_control = TRUE;
+
+	camera_update_scrollbars( TRUE );
+	ogl_pick_invalidate( );
+	redraw( );
+}
+
+
 /* end camera.c */

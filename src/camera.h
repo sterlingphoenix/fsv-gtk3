@@ -104,6 +104,7 @@ void camera_look_at_previous( void );
 void camera_birdseye_view( boolean going_up );
 void camera_dolly( double dk );
 void camera_revolve( double dtheta, double dphi );
+void camera_pan( double dx, double dy );
 
 
 /* end camera.h */
