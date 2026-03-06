@@ -65,6 +65,14 @@ static int btn1_press_x = 0, btn1_press_y = 0;
 #define PICK_MIN_INTERVAL (1.0 / 60.0)
 static double last_pick_time = 0.0;
 
+/* Keyboard pan state: TRUE while the key is physically held */
+static boolean pan_key_left = FALSE;
+static boolean pan_key_right = FALSE;
+static boolean pan_key_up = FALSE;
+static boolean pan_key_down = FALSE;
+static guint pan_idle_id = 0;
+static double pan_last_time = 0.0;
+
 
 /* Receives a newly created node table from scanfs( ) */
 void
@@ -93,6 +101,63 @@ node_at_location( int x, int y, unsigned int *face_id )
 		return node_table[node_id];
 
 	return NULL;
+}
+
+
+/* Per-frame keyboard pan callback. Runs as a GLib idle while any
+ * pan key is held, giving smooth frame-rate-coupled movement.
+ * Movement is scaled by elapsed time for consistent speed. */
+static gboolean
+keyboard_pan_tick( G_GNUC_UNUSED gpointer user_data )
+{
+	double kx = 0.0, ky = 0.0;
+	double t_now, dt;
+
+	if (pan_key_left)  kx -= KEY_PAN_STEP;
+	if (pan_key_right) kx += KEY_PAN_STEP;
+	if (pan_key_up)    ky += KEY_PAN_STEP;
+	if (pan_key_down)  ky -= KEY_PAN_STEP;
+
+	if (kx == 0.0 && ky == 0.0) {
+		pan_idle_id = 0;
+		return G_SOURCE_REMOVE;
+	}
+
+	t_now = xgettime( );
+	dt = t_now - pan_last_time;
+	pan_last_time = t_now;
+
+	/* Clamp to avoid jumps from long stalls or first-frame spike */
+	if (dt > 0.1)
+		dt = 0.1;
+
+	if (!camera_moving( ))
+		camera_pan( kx * dt * 60.0, ky * dt * 60.0 );
+
+	return G_SOURCE_CONTINUE;
+}
+
+
+/* Starts the pan idle if not already running */
+static void
+keyboard_pan_ensure_running( void )
+{
+	if (pan_idle_id == 0) {
+		pan_last_time = xgettime( );
+		pan_idle_id = g_idle_add_full( G_PRIORITY_DEFAULT_IDLE,
+		                               keyboard_pan_tick, NULL, NULL );
+	}
+}
+
+
+/* Clears all held key state (e.g. on focus loss) */
+static void
+keyboard_pan_reset( void )
+{
+	pan_key_left = FALSE;
+	pan_key_right = FALSE;
+	pan_key_up = FALSE;
+	pan_key_down = FALSE;
 }
 
 
@@ -284,32 +349,55 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		break;
 
 		case GDK_KEY_PRESS:
-		/* Arrow keys and WASD: pan the camera target */
-		if (!camera_moving( )) {
+		/* Arrow keys and WASD: mark key as held and start
+		 * frame-driven pan. Auto-repeat events are harmless
+		 * since setting an already-TRUE flag is a no-op. */
+		{
 			GdkEventKey *ev_key = (GdkEventKey *)event;
-			double kx = 0.0, ky = 0.0;
+			boolean consumed = TRUE;
 			switch (ev_key->keyval) {
 				case GDK_KEY_Left:  case GDK_KEY_a: case GDK_KEY_A:
-				kx = -KEY_PAN_STEP;
-				break;
+				pan_key_left = TRUE;  break;
 				case GDK_KEY_Right: case GDK_KEY_d: case GDK_KEY_D:
-				kx = KEY_PAN_STEP;
-				break;
+				pan_key_right = TRUE; break;
 				case GDK_KEY_Up:    case GDK_KEY_w: case GDK_KEY_W:
-				ky = -KEY_PAN_STEP;
-				break;
+				pan_key_up = TRUE;    break;
 				case GDK_KEY_Down:  case GDK_KEY_s: case GDK_KEY_S:
-				ky = KEY_PAN_STEP;
-				break;
+				pan_key_down = TRUE;  break;
+				default:
+				consumed = FALSE;     break;
+			}
+			if (consumed) {
+				indicated_node = NULL;
+				keyboard_pan_ensure_running( );
+				return TRUE;
+			}
+		}
+		break;
+
+		case GDK_KEY_RELEASE:
+		/* Clear held state for released key */
+		{
+			GdkEventKey *ev_key = (GdkEventKey *)event;
+			switch (ev_key->keyval) {
+				case GDK_KEY_Left:  case GDK_KEY_a: case GDK_KEY_A:
+				pan_key_left = FALSE;  break;
+				case GDK_KEY_Right: case GDK_KEY_d: case GDK_KEY_D:
+				pan_key_right = FALSE; break;
+				case GDK_KEY_Up:    case GDK_KEY_w: case GDK_KEY_W:
+				pan_key_up = FALSE;    break;
+				case GDK_KEY_Down:  case GDK_KEY_s: case GDK_KEY_S:
+				pan_key_down = FALSE;  break;
 				default:
 				break;
 			}
-			if (kx != 0.0 || ky != 0.0) {
-				camera_pan( kx, ky );
-				indicated_node = NULL;
-				return TRUE; /* event consumed */
-			}
 		}
+		break;
+
+		case GDK_FOCUS_CHANGE:
+		/* Clear all held keys when focus is lost */
+		if (!((GdkEventFocus *)event)->in)
+			keyboard_pan_reset( );
 		break;
 
 		default:

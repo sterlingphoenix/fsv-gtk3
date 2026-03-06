@@ -293,12 +293,23 @@ Step 6.1 - Arrow key and WASD camera control
       call camera_pan() with a fixed step size
       - DiscV: pans the 2D top-down view target
       - MapV/TreeV: pans the 3D camera target in screen-space directions
-  [ ] Verify: arrow keys and WASD pan/orbit in all three modes; keys
+  [x] Verify: arrow keys and WASD pan in all three modes; keys
       do not interfere with text entry widgets (search bar, etc.)
 
-  Checkpoint: User tests arrow keys and WASD in all three visualization
-  modes and confirms smooth panning/orbiting. Also tests that typing
-  in the search bar still works normally.
+Step 6.2 - Smooth frame-driven keyboard panning
+  [x] Track key held state (booleans per direction) instead of relying
+      on OS key repeat; filter out auto-repeat key press events
+  [x] Add GDK_KEY_RELEASE_MASK and handle GDK_KEY_RELEASE to clear
+      held state; clear all held keys on focus loss
+  [x] Drive panning from a GLib idle callback that runs every frame
+      while any pan key is held, giving instant response and smooth
+      frame-rate-coupled movement
+  [ ] Verify: panning starts instantly on key press with no delay,
+      movement is smooth, and stops cleanly on key release
+
+  Checkpoint: User tests keyboard panning in all three modes and
+  confirms instant response, smooth continuous movement, and clean
+  stop on key release. Search bar typing still works.
 
 
 NOTES
