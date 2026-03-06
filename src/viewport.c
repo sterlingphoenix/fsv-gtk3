@@ -26,6 +26,7 @@
 #include "viewport.h"
 
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 
 #include "about.h"
 #include "camera.h"
@@ -39,6 +40,9 @@
 
 /* Sensitivity factor used for manual camera control */
 #define MOUSE_SENSITIVITY 0.5
+
+/* Step size for keyboard panning (arrow keys / WASD) */
+#define KEY_PAN_STEP 3.0
 
 
 /* The node table, used to find a node by its ID number */
@@ -122,6 +126,9 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 	/* Mouse-related events */
 	switch (event->type) {
 		case GDK_BUTTON_PRESS:
+		/* Grab focus so the GL area receives key events */
+		if (!gtk_widget_has_focus( gl_area_w ))
+			gtk_widget_grab_focus( gl_area_w );
 		ev_button = (GdkEventButton *)event;
 		btn1 = ev_button->button == 1;
 		btn2 = ev_button->button == 2;
@@ -274,6 +281,35 @@ viewport_cb( GtkWidget *gl_area_w, GdkEvent *event )
 		indicated_node = NULL;
 		btn1_pressed = FALSE;
 		btn1_is_dragging = FALSE;
+		break;
+
+		case GDK_KEY_PRESS:
+		/* Arrow keys and WASD: pan the camera target */
+		if (!camera_moving( )) {
+			GdkEventKey *ev_key = (GdkEventKey *)event;
+			double kx = 0.0, ky = 0.0;
+			switch (ev_key->keyval) {
+				case GDK_KEY_Left:  case GDK_KEY_a: case GDK_KEY_A:
+				kx = -KEY_PAN_STEP;
+				break;
+				case GDK_KEY_Right: case GDK_KEY_d: case GDK_KEY_D:
+				kx = KEY_PAN_STEP;
+				break;
+				case GDK_KEY_Up:    case GDK_KEY_w: case GDK_KEY_W:
+				ky = -KEY_PAN_STEP;
+				break;
+				case GDK_KEY_Down:  case GDK_KEY_s: case GDK_KEY_S:
+				ky = KEY_PAN_STEP;
+				break;
+				default:
+				break;
+			}
+			if (kx != 0.0 || ky != 0.0) {
+				camera_pan( kx, ky );
+				indicated_node = NULL;
+				return TRUE; /* event consumed */
+			}
+		}
 		break;
 
 		default:

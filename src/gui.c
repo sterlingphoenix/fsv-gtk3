@@ -727,7 +727,9 @@ gui_gl_area_add( GtkWidget *parent_w )
 	bitmask |= GDK_LEAVE_NOTIFY_MASK;
 	bitmask |= GDK_SCROLL_MASK;
 	bitmask |= GDK_SMOOTH_SCROLL_MASK;
+	bitmask |= GDK_KEY_PRESS_MASK;
 	gtk_widget_set_events( GTK_WIDGET(gl_area_w), bitmask );
+	gtk_widget_set_can_focus( GTK_WIDGET(gl_area_w), TRUE );
 	parent_child_full( parent_w, gl_area_w, EXPAND, FILL );
 
 	return gl_area_w;

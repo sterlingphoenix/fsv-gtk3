@@ -283,6 +283,24 @@ Step 5.5 - Pick rendering optimization
   responsiveness.
 
 
+PHASE 6: KEYBOARD PANNING
+=========================
+
+Step 6.1 - Arrow key and WASD camera control
+  [x] Make the GL area widget focusable and grab focus on click, so it
+      receives key events
+  [x] Add GDK_KEY_PRESS handling to viewport_cb(): arrow keys and WASD
+      call camera_pan() with a fixed step size
+      - DiscV: pans the 2D top-down view target
+      - MapV/TreeV: pans the 3D camera target in screen-space directions
+  [ ] Verify: arrow keys and WASD pan/orbit in all three modes; keys
+      do not interfere with text entry widgets (search bar, etc.)
+
+  Checkpoint: User tests arrow keys and WASD in all three visualization
+  modes and confirms smooth panning/orbiting. Also tests that typing
+  in the search bar still works normally.
+
+
 NOTES
 =====
 - Each step should leave the code compilable and runnable
