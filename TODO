@@ -219,7 +219,7 @@ Step 5.1 - Frustum and screen-space size culling
       (e.g., 2 pixels) -- natural LOD without geometry simplification
   [x] Replace tree-level display list (3-stage system) with per-frame
       culled tree walk that calls per-directory display lists directly
-  [ ] Verify: all three modes render correctly, camera interaction is
+  [X] Verify: all three modes render correctly, camera interaction is
       smooth on large expanded trees
 
   Checkpoint: User tests with ./builddir/fsv /usr, fully expands several
