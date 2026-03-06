@@ -88,6 +88,13 @@ static int frustum_viewport_h; /* viewport height in pixels */
  * Below this threshold, labels are too small to read. */
 #define LABEL_SIZE_THRESHOLD 6.0
 
+/* Minimum projected screen size in pixels for outline (wireframe)
+ * rendering. Below this, outlines are sub-pixel and not worth drawing. */
+#define OUTLINE_SIZE_THRESHOLD 4.0
+
+/* TRUE during the wireframe outline pass, causes higher cull threshold */
+static boolean drawing_outlines = FALSE;
+
 /* Extracts frustum planes from the current GL matrices.
  * Call once per frame before any recursive draw. */
 static void
@@ -1265,10 +1272,14 @@ mapv_draw_recursive( GNode *dnode, int action, double acc_z )
 		double cx = gparams->c0.x + half_w;
 		double cy = gparams->c0.y + half_d;
 
-		/* Screen-size cull: skip entire subtree if too small */
-		if (half_size > 0.0 &&
-		    screen_size_pixels( cx, cy, node_z, half_size ) < CULL_SIZE_THRESHOLD)
-			return;
+		/* Screen-size cull: skip entire subtree if too small.
+		 * Use higher threshold for outline pass. */
+		{
+			double threshold = drawing_outlines ? OUTLINE_SIZE_THRESHOLD : CULL_SIZE_THRESHOLD;
+			if (half_size > 0.0 &&
+			    screen_size_pixels( cx, cy, node_z, half_size ) < threshold)
+				return;
+		}
 
 		/* Frustum cull: test XY footprint with generous Z range */
 		if (!frustum_test_aabb( gparams->c0.x, gparams->c0.y, acc_z - 1.0,
@@ -1470,9 +1481,11 @@ mapv_draw( boolean high_detail )
 	mapv_draw_recursive( globals.fstree, MAPV_DRAW_GEOMETRY, 0.0 );
 
 	if (high_detail) {
-		/* "Cel lines" */
+		/* "Cel lines" — skip outlines on small/distant subtrees */
 		outline_pre( );
+		drawing_outlines = TRUE;
 		mapv_draw_recursive( globals.fstree, MAPV_DRAW_GEOMETRY, 0.0 );
+		drawing_outlines = FALSE;
 		outline_post( );
 
 		/* Node name labels */
@@ -2622,16 +2635,18 @@ treev_draw_recursive( GNode *dnode, double prev_r0, double r0, int action, doubl
 	dir_collapsed = DIR_COLLAPSED(dnode);
         dir_expanded = DIR_EXPANDED(dnode);
 
-	/* Size culling for expanded platforms (skip entire subtree) */
+	/* Size culling for expanded platforms (skip entire subtree).
+	 * Use higher threshold for outline pass. */
 	if (!picking_mode && !dir_collapsed && NODE_IS_DIR(dnode) &&
 	    dir_gparams->platform.depth > 0.0) {
 		double r_center = r0 + dir_gparams->platform.depth * 0.5;
 		double wt = acc_theta + dir_gparams->platform.theta;
 		double pcx = r_center * cos( RAD(wt) );
 		double pcy = r_center * sin( RAD(wt) );
+		double threshold = drawing_outlines ? OUTLINE_SIZE_THRESHOLD : CULL_SIZE_THRESHOLD;
 
 		if (screen_size_pixels( pcx, pcy, 0.0,
-		    dir_gparams->platform.depth * 0.5 ) < CULL_SIZE_THRESHOLD)
+		    dir_gparams->platform.depth * 0.5 ) < threshold)
 			return FALSE;
 	}
 
@@ -2946,9 +2961,11 @@ treev_draw( boolean high_detail )
 	treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_GEOMETRY_WITH_BRANCHES, 0.0 );
 
 	if (high_detail) {
-		/* "Cel lines" */
+		/* "Cel lines" — skip outlines on small/distant subtrees */
 		outline_pre( );
+		drawing_outlines = TRUE;
 		treev_draw_recursive( globals.fstree, NIL, treev_core_radius, TREEV_DRAW_GEOMETRY, 0.0 );
+		drawing_outlines = FALSE;
 		outline_post( );
 
 		/* Node name labels */

@@ -245,14 +245,14 @@ Step 5.3 - Reduce tree walks during collapse/expand animation
   [x] On animation frames where no per-directory lists are stale, skip
       the Stage 0 "rebuild stale" pass and go directly to the culled
       tree walk
-  [ ] Verify: expand/collapse animations are visually correct and
+  [x] Verify: expand/collapse animations are visually correct and
       noticeably smoother on large trees
 
   Checkpoint: User tests by expanding and collapsing directories on a
   large tree and confirms animations are smooth and visually correct.
 
 Step 5.4 - Optimize wireframe outline pass
-  [ ] In TreeV and MapV high-detail rendering, the entire geometry is
+  [x] In TreeV and MapV high-detail rendering, the entire geometry is
       redrawn in wireframe mode for black edge outlines (a full extra
       tree walk). Replace with a more efficient technique:
       - Use glPolygonOffset to render filled geometry slightly offset,
